@@ -20,6 +20,8 @@ body {
   margin: 0 auto;
   position: relative;
   overflow: hidden;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .hide-scroll::-webkit-scrollbar { display: none; }
@@ -54,3 +56,4 @@ select:focus-visible {
 .animate-slide-down { animation: slide-down 0.3s ease-out; }
 .animate-fade-in { animation: fade-in 0.3s ease-out; }
 .animate-scan { animation: scan 2s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+
