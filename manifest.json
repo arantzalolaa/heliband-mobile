@@ -1,0 +1,17 @@
+{
+  "name": "Heli-Band",
+  "short_name": "HeliBand",
+  "description": "Tu protección solar inteligente",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#FFFBF2",
+  "theme_color": "#FF6B4A",
+  "icons": [
+    {
+      "src": "assets/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
