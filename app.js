@@ -345,4 +345,3 @@ function render() {
 
 state.users = loadUsers();
 render();
-
