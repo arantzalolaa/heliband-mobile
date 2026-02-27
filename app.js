@@ -153,7 +153,7 @@ function getRecommendationText(uv) {
 }
 
 function wrapScreen(gradient, content) {
-  return `<div class="w-full min-h-dvh bg-[#E0E0E0] text-gray-800 font-sans"><div class="screen-shell ${gradient}">${content}</div></div>`;
+  return `<div class="w-full min-h-dvh bg-[#FFFBF2] text-gray-800 font-sans"><div class="screen-shell ${gradient}">${content}</div></div>`;
 }
 
 function loginView() {
@@ -257,7 +257,7 @@ function modalView() {
 function dashboardView() {
   const view = state.dashboard.currentView;
   const content = view === 'home' ? homeContent() : view === 'history' ? historyContent() : profileContent();
-  return wrapScreen('bg-[#FFFBF2]', `<div class="h-dvh overflow-y-auto hide-scroll pt-0">${content}</div><div class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-3rem)] max-w-[382px]"><div class="bg-white px-2 py-3 rounded-3xl border border-gray-50 flex justify-around items-center shadow-[0_10px_30px_-5px_rgba(0,0,0,0.1)]"><button data-view="home" class="w-12 h-12 ${view==='home'?'bg-[#FFEDE1] text-orange-600':'text-gray-400'} rounded-2xl flex items-center justify-center"><i data-lucide="home"></i></button><button data-view="history" class="w-12 h-12 ${view==='history'?'bg-[#FFEDE1] text-orange-600':'text-gray-400'} rounded-2xl flex items-center justify-center"><i data-lucide="clock"></i></button><button data-view="profile" class="w-12 h-12 ${view==='profile'?'bg-[#FFEDE1] text-orange-600':'text-gray-400'} rounded-2xl flex items-center justify-center"><i data-lucide="user"></i></button></div></div>${modalView()}`);
+  return wrapScreen('bg-[#FFFBF2]', `<div class="h-dvh overflow-y-auto hide-scroll pt-0">${content}</div><div class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)]"><div class="bg-white px-2 py-3 rounded-3xl border border-gray-50 flex justify-around items-center shadow-[0_10px_30px_-5px_rgba(0,0,0,0.1)]"><button data-view="home" class="w-12 h-12 ${view==='home'?'bg-[#FFEDE1] text-orange-600':'text-gray-400'} rounded-2xl flex items-center justify-center"><i data-lucide="home"></i></button><button data-view="history" class="w-12 h-12 ${view==='history'?'bg-[#FFEDE1] text-orange-600':'text-gray-400'} rounded-2xl flex items-center justify-center"><i data-lucide="clock"></i></button><button data-view="profile" class="w-12 h-12 ${view==='profile'?'bg-[#FFEDE1] text-orange-600':'text-gray-400'} rounded-2xl flex items-center justify-center"><i data-lucide="user"></i></button></div></div>${modalView()}`);
 }
 
 function downloadHistoryCSV() {
