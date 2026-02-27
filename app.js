@@ -2,13 +2,14 @@ const state = {
   isLoggedIn: false,
   username: '',
   authView: 'login',
-  loginUser: 'heli',
-  loginPass: '123',
+  loginUser: '',
+  loginPass: '',
   showPassword: false,
   loadingLogin: false,
   forgotStep: 'email',
   forgotEmail: '',
   forgotCode: ['', '', '', ''],
+  users: [],
   dashboard: {
     currentView: 'home',
     displayTime: '10:00',
@@ -16,7 +17,7 @@ const state = {
     currentUV: 7.5,
     exposureTime: 45,
     isRefreshing: false,
-    showRecommendation: false,
+    showRecommendation: true,
     lastRecommendation: null,
     isConnected: true,
     recommendations: [
@@ -62,6 +63,28 @@ const logo = 'assets/logo.png';
 const app = document.getElementById('app');
 let toastTimer;
 let toastEl;
+let cameraStream;
+let cameraPermissionError = false;
+
+function loadUsers() {
+  try {
+    const stored = localStorage.getItem('heli_users');
+    if (!stored) return [];
+    const parsed = JSON.parse(stored);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((u) => typeof u?.username === 'string' && typeof u?.password === 'string');
+  } catch {
+    return [];
+  }
+}
+
+function saveUsers() {
+  try {
+    localStorage.setItem('heli_users', JSON.stringify(state.users));
+  } catch {
+    // ignore storage failures
+  }
+}
 
 const formatTime = (d = new Date()) => d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
 const formatDate = (d = new Date()) => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
@@ -86,6 +109,36 @@ function showToast(msg) {
   }, 1600);
 }
 
+
+
+function stopCameraPreview() {
+  if (!cameraStream) return;
+  cameraStream.getTracks().forEach((track) => track.stop());
+  cameraStream = null;
+}
+
+async function startCameraPreview() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    cameraPermissionError = true;
+    showToast('Tu navegador no permite abrir cámara');
+    return;
+  }
+
+  try {
+    stopCameraPreview();
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+    const video = document.getElementById('camera-feed');
+    if (video) {
+      video.srcObject = cameraStream;
+      cameraPermissionError = false;
+      await video.play().catch(() => {});
+    }
+  } catch (error) {
+    cameraPermissionError = true;
+    showToast('No se pudo acceder a la cámara');
+  }
+}
+
 function getUVStatus(uv) {
   if (uv <= 2.9) return { label: 'Bajo', from: 'from-green-400', to: 'to-green-500', textCol: 'text-green-600', bg: 'bg-green-50' };
   if (uv <= 5.9) return { label: 'Moderado', from: 'from-yellow-300', to: 'to-yellow-500', textCol: 'text-yellow-600', bg: 'bg-yellow-50' };
@@ -105,8 +158,7 @@ function wrapScreen(gradient, content) {
 
 function loginView() {
   return wrapScreen('bg-gradient-to-b from-[#FFE8B6] via-[#FFF5E1] to-white', `
-    <div class="absolute top-0 left-0 right-0 h-14 z-40 flex items-center justify-between px-6 pt-4 pointer-events-none text-gray-800"><span class="text-sm font-semibold ml-2">10:00</span><div class="flex items-center gap-2 mr-2"><i data-lucide="signal"></i><i data-lucide="wifi"></i><i data-lucide="battery"></i></div></div>
-    <div class="min-h-dvh flex flex-col items-center justify-center px-8 pt-20 pb-10 w-full">
+    <div class="min-h-dvh flex flex-col items-center justify-center px-8 pt-12 pb-10 w-full">
       <div class="flex flex-col items-center mb-12 animate-fade-in"><div class="relative mb-6 filter drop-shadow-xl"><img src="${logo}" alt="Heli-Band Logo" class="logo-size object-contain" /></div><p class="text-gray-500 text-sm mt-2 font-medium">Tu protección solar inteligente</p></div>
       <form id="login-form" class="w-full space-y-5">
         <input id="login-user" type="text" value="${state.loginUser}" placeholder="Nombre de usuario" class="w-full bg-white/80 rounded-2xl px-6 py-4 text-center border border-orange-100/50 outline-none" />
@@ -128,7 +180,7 @@ function forgotView() {
 }
 
 function createView() {
-  return wrapScreen('bg-gradient-to-b from-[#FFE8B6] via-[#FFF5E1] to-white', `<div class="min-h-dvh flex flex-col px-8 pt-20 w-full"><button id="create-back" class="self-start mb-6 text-2xl">←</button><form id="create-form" class="space-y-4"><h2 class="text-2xl font-bold text-center">Crear cuenta</h2><input type="text" placeholder="Nombre de usuario" class="w-full bg-white/80 rounded-2xl px-6 py-4 text-center" /><input type="email" placeholder="Correo" class="w-full bg-white/80 rounded-2xl px-6 py-4 text-center" /><input type="password" placeholder="Contraseña" class="w-full bg-white/80 rounded-2xl px-6 py-4 text-center" /><button class="w-full bg-orange-500 text-white py-3 rounded-2xl font-bold">Crear cuenta</button></form></div>`);
+  return wrapScreen('bg-gradient-to-b from-[#FFE8B6] via-[#FFF5E1] to-white', `<div class="min-h-dvh flex flex-col px-8 pt-20 w-full"><button id="create-back" class="self-start mb-6 text-2xl">←</button><form id="create-form" class="space-y-4"><h2 class="text-2xl font-bold text-center">Crear cuenta</h2><input id="create-user" type="text" placeholder="Nombre de usuario" class="w-full bg-white/80 rounded-2xl px-6 py-4 text-center" /><input id="create-email" type="email" placeholder="Correo" class="w-full bg-white/80 rounded-2xl px-6 py-4 text-center" /><input id="create-pass" type="password" placeholder="Contraseña" class="w-full bg-white/80 rounded-2xl px-6 py-4 text-center" /><button class="w-full bg-orange-500 text-white py-3 rounded-2xl font-bold">Crear cuenta</button></form></div>`);
 }
 
 function homeContent() {
@@ -184,7 +236,7 @@ function profileContent() {
   <div class="space-y-3 mb-6"><div class="bg-white rounded-2xl p-4 border border-gray-100 flex items-start gap-3"><div class="bg-green-50 p-2.5 rounded-full"><i data-lucide="shield" class="text-green-500"></i></div><div class="flex-1"><p class="text-[10px] text-gray-400 font-bold uppercase mb-2">FPS ACTUAL</p><div class="flex items-center justify-between"><button id="spf-dec" ${(spfIndex===0 || !p.isEditing)?'disabled':''} class="p-2 rounded-xl ${(spfIndex===0 || !p.isEditing)?'bg-gray-100 text-gray-300':'bg-orange-50 text-orange-600'}"><i data-lucide="chevron-left"></i></button><p class="text-3xl text-gray-800 font-bold">${p.spf}+</p><button id="spf-inc" ${(spfIndex===spfOptions.length-1 || !p.isEditing)?'disabled':''} class="p-2 rounded-xl ${(spfIndex===spfOptions.length-1 || !p.isEditing)?'bg-gray-100 text-gray-300':'bg-orange-50 text-orange-600'}"><i data-lucide="chevron-right"></i></button></div></div></div>
   <div class="bg-white rounded-2xl p-4 border border-gray-100 flex items-center justify-between"><div class="flex items-center gap-3"><div class="bg-yellow-50 p-2.5 rounded-full"><i data-lucide="bell" class="text-yellow-600"></i></div><div><p class="text-gray-800 font-bold text-sm">Notificaciones</p><p class="text-[10px] text-gray-400 font-medium">Alertas activas</p></div></div><button id="toggle-notifications" class="w-11 h-6 rounded-full flex items-center p-1 ${p.notifications?'bg-orange-500':'bg-gray-200'}"><div class="w-4 h-4 bg-white rounded-full ${p.notifications?'translate-x-5':'translate-x-0'}"></div></button></div></div>
   <div class="space-y-3"><button id="band-settings" class="w-full bg-white rounded-2xl p-4 flex items-center justify-between border border-gray-100"><div class="flex items-center gap-3"><i data-lucide="settings" class="text-gray-400"></i><span class="text-sm text-gray-600 font-medium">Configuración de pulsera</span></div><i data-lucide="chevron-right" class="text-gray-300"></i></button><button id="logout" class="w-full bg-red-50 rounded-2xl p-4 flex items-center justify-between border border-red-100"><div class="flex items-center gap-3"><i data-lucide="log-out" class="text-red-500"></i><span class="text-sm text-red-600 font-bold">Cerrar sesión</span></div></button></div>
-  ${p.showCamera ? `<div class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center"><div class="absolute top-4 left-0 right-0 p-4 flex justify-between items-center"><button id="stop-camera" class="bg-black/40 p-2 rounded-full text-white">✕</button><span class="text-white font-medium bg-black/40 px-3 py-1 rounded-full text-sm">Escáner IA</span><div class="w-10"></div></div><div class="w-full h-full relative flex items-center justify-center bg-gray-900"><div class="relative w-64 h-80 border-2 border-white/40 rounded-[2rem] overflow-hidden">${p.isScanning ? '<div class="absolute top-0 left-0 w-full h-1.5 bg-orange-500 shadow-[0_0_20px_rgba(249,115,22,1)] animate-scan z-20"></div>' : ''}</div><p class="absolute bottom-32 text-white/90 text-sm font-medium bg-black/40 px-6 py-2 rounded-full">${p.isScanning ? 'Analizando pigmentación...' : 'Alinea tu rostro en el marco'}</p></div><div class="absolute bottom-10 left-0 right-0 flex items-center justify-center"><button id="scan-skin" ${p.isScanning?'disabled':''} class="w-20 h-20 p-1.5 rounded-full border-[5px] border-white"><div class="w-full h-full bg-white rounded-full shadow-lg"></div></button></div></div>` : ''}
+  ${p.showCamera ? `<div class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center"><div class="absolute top-4 left-0 right-0 p-4 flex justify-between items-center"><button id="stop-camera" class="bg-black/40 p-2 rounded-full text-white">✕</button><span class="text-white font-medium bg-black/40 px-3 py-1 rounded-full text-sm">Escáner IA</span><div class="w-10"></div></div><div class="w-full h-full relative flex items-center justify-center bg-gray-900"><div class="relative w-64 h-80 border-2 border-white/40 rounded-[2rem] overflow-hidden bg-black"><video id="camera-feed" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover ${cameraPermissionError ? 'hidden' : ''}"></video>${cameraPermissionError ? '<div class="absolute inset-0 flex items-center justify-center text-white/90 text-sm px-6 text-center">No se pudo abrir tu cámara. Puedes seguir usando la simulación.</div>' : ''}${p.isScanning ? '<div class="absolute top-0 left-0 w-full h-1.5 bg-orange-500 shadow-[0_0_20px_rgba(249,115,22,1)] animate-scan z-20"></div>' : ''}</div><p class="absolute bottom-32 text-white/90 text-sm font-medium bg-black/40 px-6 py-2 rounded-full">${p.isScanning ? 'Analizando pigmentación...' : 'Alinea tu rostro en el marco'}</p></div><div class="absolute bottom-10 left-0 right-0 flex items-center justify-center"><button id="scan-skin" ${p.isScanning?'disabled':''} class="w-20 h-20 p-1.5 rounded-full border-[5px] border-white"><div class="w-full h-full bg-white rounded-full shadow-lg"></div></button></div></div>` : ''}
 </div>`;
 }
 
@@ -205,7 +257,7 @@ function modalView() {
 function dashboardView() {
   const view = state.dashboard.currentView;
   const content = view === 'home' ? homeContent() : view === 'history' ? historyContent() : profileContent();
-  return wrapScreen('bg-[#FFFBF2]', `<div class="absolute top-0 left-0 right-0 h-14 z-40 flex items-center justify-between px-6 pt-4 pointer-events-none text-gray-800"><span class="text-sm font-semibold ml-2">${state.dashboard.displayTime}</span><div class="flex items-center gap-2 mr-2"><i data-lucide="signal"></i><i data-lucide="wifi"></i><i data-lucide="battery"></i></div></div><div class="min-h-dvh overflow-y-auto hide-scroll pt-0">${content}</div><div class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-3rem)] max-w-[382px]"><div class="bg-white px-2 py-3 rounded-3xl border border-gray-50 flex justify-around items-center shadow-[0_10px_30px_-5px_rgba(0,0,0,0.1)]"><button data-view="home" class="w-12 h-12 ${view==='home'?'bg-[#FFEDE1] text-orange-600':'text-gray-400'} rounded-2xl flex items-center justify-center"><i data-lucide="home"></i></button><button data-view="history" class="w-12 h-12 ${view==='history'?'bg-[#FFEDE1] text-orange-600':'text-gray-400'} rounded-2xl flex items-center justify-center"><i data-lucide="clock"></i></button><button data-view="profile" class="w-12 h-12 ${view==='profile'?'bg-[#FFEDE1] text-orange-600':'text-gray-400'} rounded-2xl flex items-center justify-center"><i data-lucide="user"></i></button></div></div>${modalView()}`);
+  return wrapScreen('bg-[#FFFBF2]', `<div class="min-h-dvh overflow-y-auto hide-scroll pt-0">${content}</div><div class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-3rem)] max-w-[382px]"><div class="bg-white px-2 py-3 rounded-3xl border border-gray-50 flex justify-around items-center shadow-[0_10px_30px_-5px_rgba(0,0,0,0.1)]"><button data-view="home" class="w-12 h-12 ${view==='home'?'bg-[#FFEDE1] text-orange-600':'text-gray-400'} rounded-2xl flex items-center justify-center"><i data-lucide="home"></i></button><button data-view="history" class="w-12 h-12 ${view==='history'?'bg-[#FFEDE1] text-orange-600':'text-gray-400'} rounded-2xl flex items-center justify-center"><i data-lucide="clock"></i></button><button data-view="profile" class="w-12 h-12 ${view==='profile'?'bg-[#FFEDE1] text-orange-600':'text-gray-400'} rounded-2xl flex items-center justify-center"><i data-lucide="user"></i></button></div></div>${modalView()}`);
 }
 
 function downloadHistoryCSV() {
@@ -226,7 +278,7 @@ function bind() {
   document.getElementById('create-btn')?.addEventListener('click', () => { state.authView = 'create-account'; render(); });
   document.getElementById('login-user')?.addEventListener('input', (e) => { state.loginUser = e.target.value; });
   document.getElementById('login-pass')?.addEventListener('input', (e) => { state.loginPass = e.target.value; });
-  document.getElementById('login-form')?.addEventListener('submit', (e) => { e.preventDefault(); if (!state.loginUser.trim() || !state.loginPass.trim()) return; if (state.loginUser !== 'heli' || state.loginPass !== '123') return showToast('Credenciales inválidas'); state.loadingLogin = true; render(); setTimeout(() => { state.username = state.loginUser; state.isLoggedIn = true; state.loadingLogin = false; render(); showToast('Sesión iniciada'); }, 1500); });
+  document.getElementById('login-form')?.addEventListener('submit', (e) => { e.preventDefault(); if (!state.loginUser.trim() || !state.loginPass.trim()) return; const user = state.users.find((u) => u.username.toLowerCase() === state.loginUser.trim().toLowerCase() && u.password === state.loginPass); if (!user) return showToast('Credenciales inválidas'); state.loadingLogin = true; render(); setTimeout(() => { state.username = user.username; state.isLoggedIn = true; state.loadingLogin = false; render(); showToast('Sesión iniciada'); }, 1500); });
 
   document.getElementById('forgot-back')?.addEventListener('click', () => { if (state.forgotStep === 'email') state.authView = 'login'; else state.forgotStep = 'email'; render(); });
   document.getElementById('forgot-email')?.addEventListener('input', (e) => { state.forgotEmail = e.target.value; });
@@ -235,12 +287,29 @@ function bind() {
   document.getElementById('forgot-code-form')?.addEventListener('submit', (e) => { e.preventDefault(); if (state.forgotCode.join('').length !== 4) return showToast('Completa 4 dígitos'); setTimeout(() => { state.forgotStep = 'success'; render(); showToast('Código verificado'); }, 800); });
   document.getElementById('forgot-back-login')?.addEventListener('click', () => { state.authView = 'login'; state.forgotStep = 'email'; state.forgotCode = ['', '', '', '']; render(); });
   document.getElementById('create-back')?.addEventListener('click', () => { state.authView = 'login'; render(); });
-  document.getElementById('create-form')?.addEventListener('submit', (e) => { e.preventDefault(); state.authView = 'login'; render(); showToast('Cuenta creada'); });
+  document.getElementById('create-form')?.addEventListener('submit', (e) => { e.preventDefault(); const username = document.getElementById('create-user')?.value.trim(); const password = document.getElementById('create-pass')?.value || ''; if (!username || !password) return showToast('Completa usuario y contraseña'); const exists = state.users.some((u) => u.username.toLowerCase() === username.toLowerCase()); if (exists) return showToast('Ese usuario ya existe'); state.users.push({ username, password }); saveUsers(); state.loginUser = username; state.loginPass = password; state.authView = 'login'; render(); showToast('Cuenta creada'); });
 
   document.querySelectorAll('[data-view]').forEach((btn) => btn.addEventListener('click', () => { state.dashboard.currentView = btn.dataset.view; render(); }));
-  document.getElementById('refresh')?.addEventListener('click', () => { state.dashboard.isRefreshing = true; render(); setTimeout(() => { const newUV = +(Math.random() * 10 + 1).toFixed(1); state.dashboard.currentUV = newUV;
+  document.getElementById('refresh')?.addEventListener('click', () => { state.dashboard.isRefreshing = true; render(); setTimeout(() => {
+    if (state.dashboard.showRecommendation) {
+      state.dashboard.lastRecommendation = {
+        id: Date.now(),
+        uv: state.dashboard.currentUV,
+        message: getRecommendationText(state.dashboard.currentUV),
+        timestamp: `${formatDate()}, ${formatTime()}`,
+        level: getUVStatus(state.dashboard.currentUV).label,
+      };
+    }
+    const newUV = +(Math.random() * 10 + 1).toFixed(1);
+    state.dashboard.currentUV = newUV;
     state.dashboard.displayTime = formatTime();
-    state.dashboard.displayDate = formatDate(); state.dashboard.isRefreshing = false; state.dashboard.showRecommendation = true; state.dashboard.recommendations.unshift({ id: Date.now(), uv: newUV, message: getRecommendationText(newUV), timestamp: `${formatDate()}, ${formatTime()}`, level: getUVStatus(newUV).label }); render(); showToast('Datos UV actualizados'); }, 1200); });
+    state.dashboard.displayDate = formatDate();
+    state.dashboard.isRefreshing = false;
+    state.dashboard.showRecommendation = true;
+    state.dashboard.recommendations.unshift({ id: Date.now(), uv: newUV, message: getRecommendationText(newUV), timestamp: `${formatDate()}, ${formatTime()}`, level: getUVStatus(newUV).label });
+    render();
+    showToast('Datos UV actualizados');
+  }, 1200); });
   document.getElementById('close-rec')?.addEventListener('click', () => { state.dashboard.lastRecommendation = { id: Date.now(), uv: state.dashboard.currentUV, message: getRecommendationText(state.dashboard.currentUV), timestamp: `${formatDate()}, ${formatTime()}`, level: getUVStatus(state.dashboard.currentUV).label }; state.dashboard.showRecommendation = false; render(); });
   document.getElementById('calculate-risk')?.addEventListener('click', () => { state.ui.modal = 'risk'; render(); });
 
@@ -252,9 +321,9 @@ function bind() {
 
   document.getElementById('toggle-edit')?.addEventListener('click', () => { state.profile.isEditing = !state.profile.isEditing; render(); showToast(state.profile.isEditing ? 'Modo edición activado' : 'Modo edición desactivado'); });
   document.getElementById('skin-select')?.addEventListener('change', (e) => { if (!state.profile.isEditing) return; state.profile.skinTypeIndex = Number(e.target.value); render(); });
-  document.getElementById('start-camera')?.addEventListener('click', () => { if (!state.profile.isEditing) return showToast('Activa modo edición'); state.profile.showCamera = true; render(); });
-  document.getElementById('stop-camera')?.addEventListener('click', () => { state.profile.showCamera = false; state.profile.isScanning = false; render(); });
-  document.getElementById('scan-skin')?.addEventListener('click', () => { state.profile.isScanning = true; render(); setTimeout(() => { state.profile.skinTypeIndex = Math.floor(Math.random() * 3) + 1; state.profile.isScanning = false; state.profile.showCamera = false; render(); showToast('Escaneo completado'); }, 2200); });
+  document.getElementById('start-camera')?.addEventListener('click', async () => { if (!state.profile.isEditing) return showToast('Activa modo edición'); state.profile.showCamera = true; render(); await startCameraPreview(); });
+  document.getElementById('stop-camera')?.addEventListener('click', () => { state.profile.showCamera = false; state.profile.isScanning = false; stopCameraPreview(); render(); });
+  document.getElementById('scan-skin')?.addEventListener('click', () => { state.profile.isScanning = true; render(); setTimeout(() => { state.profile.skinTypeIndex = Math.floor(Math.random() * 3) + 1; state.profile.isScanning = false; state.profile.showCamera = false; stopCameraPreview(); render(); showToast('Escaneo completado'); }, 2200); });
   document.getElementById('spf-inc')?.addEventListener('click', () => { if (!state.profile.isEditing) return showToast('Activa modo edición'); const i = spfOptions.indexOf(state.profile.spf); if (i < spfOptions.length - 1) state.profile.spf = spfOptions[i + 1]; render(); });
   document.getElementById('spf-dec')?.addEventListener('click', () => { if (!state.profile.isEditing) return showToast('Activa modo edición'); const i = spfOptions.indexOf(state.profile.spf); if (i > 0) state.profile.spf = spfOptions[i - 1]; render(); });
   document.getElementById('toggle-notifications')?.addEventListener('click', () => { state.profile.notifications = !state.profile.notifications; render(); showToast(state.profile.notifications ? 'Notificaciones activadas' : 'Notificaciones desactivadas'); });
@@ -262,7 +331,7 @@ function bind() {
   document.getElementById('force-sync')?.addEventListener('click', () => { showToast('Pulsera sincronizada'); state.ui.modal = ''; render(); });
 
   document.getElementById('close-modal')?.addEventListener('click', () => { state.ui.modal = ''; render(); });
-  document.getElementById('logout')?.addEventListener('click', () => { setTimeout(() => { state.isLoggedIn = false; state.username = ''; state.authView = 'login'; state.ui.modal = ''; render(); }, 500); });
+  document.getElementById('logout')?.addEventListener('click', () => { setTimeout(() => { stopCameraPreview(); state.isLoggedIn = false; state.username = ''; state.authView = 'login'; state.ui.modal = ''; render(); }, 500); });
 }
 
 function render() {
@@ -274,4 +343,6 @@ function render() {
   bind();
 }
 
+state.users = loadUsers();
 render();
+
