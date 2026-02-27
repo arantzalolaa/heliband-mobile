@@ -6,6 +6,9 @@ body {
   height: 100%;
   font-size: 17px;
   line-height: 1.35;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: pan-y;
 }
 
 #app {
@@ -20,8 +23,6 @@ body {
   margin: 0 auto;
   position: relative;
   overflow: hidden;
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .hide-scroll::-webkit-scrollbar { display: none; }
@@ -57,3 +58,15 @@ select:focus-visible {
 .animate-fade-in { animation: fade-in 0.3s ease-out; }
 .animate-scan { animation: scan 2s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
 
+
+/* Make scroll feel native-app: allow scrolling, hide scrollbar visuals */
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
