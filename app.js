@@ -46,6 +46,7 @@ const state = {
   },
   ui: {
     modal: '',
+    modalData: null,
   },
 };
 
@@ -196,6 +197,13 @@ function homeContent() {
   </div>`;
 }
 
+
+function getExposureMeta(minutes) {
+  if (minutes >= 40) return { level: 'Alta', chip: 'bg-red-100 text-red-700', dayBg: 'bg-red-100 text-red-700 border-red-200' };
+  if (minutes >= 20) return { level: 'Media', chip: 'bg-yellow-100 text-yellow-700', dayBg: 'bg-yellow-100 text-yellow-700 border-yellow-200' };
+  return { level: 'Segura', chip: 'bg-green-100 text-green-700', dayBg: 'bg-green-100 text-green-700 border-green-200' };
+}
+
 function historyContent() {
   const d = state.dashboard;
   const avg = Math.round(d.weeklyData.reduce((s, x) => s + x.minutes, 0) / d.weeklyData.length);
@@ -218,10 +226,10 @@ function historyContent() {
     return `<div class="${s.bg} rounded-xl p-3 border border-gray-100 shadow-sm"><div class="flex justify-between mb-1"><span class="text-[10px] font-bold ${s.textCol}">${rec.level} • UV ${rec.uv}</span><span class="text-[9px] text-gray-400">${rec.timestamp}</span></div><p class="text-xs text-gray-700 font-medium">${rec.message}</p></div>`;
   }).join('');
 
-  return `<div class="px-6 pt-10 pb-32 animate-fade-in"><div class="flex items-center justify-between mb-5 pt-4"><div><div class="flex items-center gap-2"><i data-lucide="clock" class="text-orange-500"></i><h1 class="text-3xl font-bold">Historial</h1></div><p class="text-xs text-gray-500">Resumen semanal</p></div><div class="flex gap-2"><button id="calendar-btn" class="p-2.5 rounded-xl bg-white border border-orange-100 text-orange-500"><i data-lucide="calendar"></i></button><button id="download-btn" class="p-2.5 rounded-xl bg-white border border-orange-100 text-orange-500"><i data-lucide="download"></i></button></div></div>
-  <div class="bg-white rounded-[2rem] p-5 shadow-xl mb-5 border border-white"><div class="flex items-center justify-between mb-4"><h2 class="text-gray-500 text-xs font-bold tracking-[0.15em]">EXPOSICIÓN UV (MINUTOS)</h2><div class="flex items-center gap-1.5 bg-green-50 px-2.5 py-1 rounded-full border border-green-100"><i data-lucide="trending-up" class="text-green-600" style="width:12px;height:12px"></i><span class="text-[10px] font-bold text-green-700">+12% vs semana pasada</span></div></div><div class="flex flex-wrap gap-2 mb-4 text-[11px]"><span class="px-2 py-1 rounded-full bg-green-50 text-green-700 font-semibold">Bajo &lt;20 min</span><span class="px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 font-semibold">Moderado 20-39 min</span><span class="px-2 py-1 rounded-full bg-orange-50 text-[#FF5E62] font-semibold">Alto ≥40 min</span><span class="px-2 py-1 rounded-full bg-gray-100 text-gray-700 font-semibold">UV máx por día en detalle</span></div><div class="relative h-48"><div class="absolute left-8 right-0 top-0 bottom-6">${yGrid}</div><div class="absolute left-8 right-0 bottom-0 top-2 flex items-end justify-between">${bars}</div></div></div>
-  ${d.selectedDay !== null ? `<div class="w-full bg-orange-50 rounded-2xl p-4 border border-orange-100 mb-5 flex items-center justify-between"><div class="flex items-center gap-4"><div class="bg-white p-3 rounded-full text-orange-500"><i data-lucide="sun"></i></div><div><p class="text-orange-600/70 text-xs font-bold uppercase">${d.weeklyData[d.selectedDay].fullDay}</p><p class="text-gray-800 font-bold text-[17px]">${d.weeklyData[d.selectedDay].minutes} min</p><p class="text-gray-500 text-[15px] font-bold">UV máx ${d.weeklyData[d.selectedDay].uv}</p></div></div><button id="close-day" class="text-sm font-medium text-orange-600 px-4 py-2 bg-white/50 rounded-xl">Cerrar</button></div>` : ''}
-  <div class="grid grid-cols-2 gap-3 mb-5"><div class="bg-white rounded-2xl p-4 border border-gray-100"><p class="text-gray-400 text-[10px] font-bold uppercase">PROMEDIO DIARIO</p><p class="text-2xl text-gray-800 font-bold">${avg}<span class="text-xs text-gray-500"> min</span></p></div><div class="bg-white rounded-2xl p-4 border border-gray-100"><p class="text-gray-400 text-[10px] font-bold uppercase">TOTAL SEMANA</p><p class="text-2xl text-gray-800 font-bold">${hours}h ${mins}m</p></div></div>
+  return `<div class="px-6 pt-10 pb-32 animate-fade-in"><div class="flex items-center justify-between mb-5 pt-4"><div><div class="flex items-center gap-2"><i data-lucide="clock" class="text-orange-500"></i><h1 class="text-3xl font-bold">Historial</h1></div><p class="text-xs text-gray-500">Resumen semanal</p></div><div class="flex gap-2"><button id="calendar-btn" class="p-2.5 rounded-xl bg-white border border-orange-100 text-orange-500"><i data-lucide="calendar"></i><span class="sr-only">Vista Mensual</span></button></div></div>
+  <div class="bg-white rounded-[2rem] p-5 shadow-xl mb-5 border border-white"><div class="flex items-center justify-between mb-4"><h2 class="text-gray-500 text-xs font-bold tracking-[0.15em]">EXPOSICIÓN UV (MINUTOS)</h2><button id="chart-help" class="w-7 h-7 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center" aria-label="Ayuda de gráfica"><i data-lucide="help-circle" style="width:16px;height:16px"></i></button></div><div class="relative h-48"><div class="absolute left-8 right-0 top-0 bottom-6">${yGrid}</div><div class="absolute left-8 right-0 bottom-0 top-2 flex items-end justify-between">${bars}</div></div></div>
+  ${d.selectedDay !== null ? `<div class="w-full bg-orange-50 rounded-2xl p-4 border border-orange-100 mb-5 flex items-center justify-between"><div class="flex items-center gap-4"><div class="bg-white p-3 rounded-full text-orange-500"><i data-lucide="sun"></i></div><div><p class="text-orange-600/70 text-xs font-bold uppercase">${d.weeklyData[d.selectedDay].fullDay}</p><p class="text-gray-800 font-bold text-[17px]">${d.weeklyData[d.selectedDay].minutes} min</p><p class="text-gray-500 text-[13px] font-semibold">Promedio de minutos de exposición solar ese día</p><p class="text-gray-500 text-[13px] font-bold">UV máx ${d.weeklyData[d.selectedDay].uv}</p></div></div><button id="close-day" class="text-sm font-medium text-orange-600 px-4 py-2 bg-white/50 rounded-xl">Cerrar</button></div>` : ''}
+  <div class="grid grid-cols-2 gap-3 mb-5"><div class="bg-white rounded-2xl p-4 border border-gray-100"><p class="text-gray-400 text-[10px] font-bold uppercase">PROMEDIO DIARIO DE EXPOSICIÓN</p><p class="text-2xl text-gray-800 font-bold">${avg}<span class="text-xs text-gray-500"> min al día</span></p><p class="text-[11px] text-gray-500 mt-1">Tiempo promedio de exposición al sol por día.</p></div><div class="bg-white rounded-2xl p-4 border border-gray-100"><p class="text-gray-400 text-[10px] font-bold uppercase">TOTAL SEMANA</p><p class="text-2xl text-gray-800 font-bold">${hours}h ${mins}m</p></div></div>
   <div class="mb-4"><h3 class="text-xs font-bold text-gray-400 uppercase mb-3">Historial de recomendaciones</h3><div class="space-y-2">${recs}</div>${d.recommendations.length > 3 ? `<button id="toggle-all-recs" class="w-full mt-2 py-2 text-xs font-bold text-orange-600">${d.showAllRecommendations ? 'Ver menos' : `Ver más (${d.recommendations.length - 3})`}</button>` : ''}</div></div>`;
 }
 
@@ -242,7 +250,23 @@ function profileContent() {
 
 function modalView() {
   if (state.ui.modal === 'calendar') {
-    return `<div class="fixed inset-0 z-[140] bg-black/50 flex items-end"><div class="w-full max-w-[430px] mx-auto bg-white rounded-t-3xl p-5"><div class="flex justify-between items-center mb-3"><h3 class="font-bold">Vista mensual</h3><button id="close-modal">✕</button></div><div class="grid grid-cols-7 gap-2 text-center text-xs">${Array.from({length: 35}).map((_, i) => `<div class="py-2 rounded ${i%7===0?'bg-orange-50':''}">${i+1<=31?i+1:''}</div>`).join('')}</div></div></div>`;
+    const now = new Date();
+    const monthLabel = now.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+    const week = state.dashboard.weeklyData;
+    const days = Array.from({ length: 30 }).map((_, i) => {
+      const source = week[i % week.length];
+      return { day: i + 1, minutes: source.minutes, uv: source.uv, fullDay: source.fullDay };
+    });
+    return `<div class="fixed inset-0 z-[140] bg-black/50 flex items-end"><div class="w-full max-w-[430px] mx-auto bg-white rounded-t-3xl p-5"><div class="flex justify-between items-center mb-3"><div class="w-8"></div><h3 class="font-bold text-lg capitalize text-center">${monthLabel}</h3><button id="close-modal">✕</button></div><div class="grid grid-cols-7 gap-2 text-center text-[11px] text-gray-400 mb-2"><span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span></div><div class="grid grid-cols-7 gap-2 text-center text-xs">${days.map((x) => { const exposure = getExposureMeta(x.minutes); return `<button data-calendar-day="${x.day}" class="py-2 rounded-lg border ${exposure.dayBg}" title="${x.day}: ${x.minutes} min promedio">${x.day}</button>`; }).join('')}</div><p class="text-[11px] text-gray-500 mt-3">Colores: verde = exposición segura, amarillo = media, rojo = alta.</p></div></div>`;
+  }
+  if (state.ui.modal === 'calendar-day') {
+    const detail = state.ui.modalData;
+    if (!detail) return '';
+    const exposure = getExposureMeta(detail.minutes);
+    return `<div class="fixed inset-0 z-[145] bg-black/50 flex items-center justify-center p-6"><div class="bg-white w-full max-w-sm rounded-3xl p-5"><div class="flex justify-between items-center mb-2"><h3 class="font-bold">Detalle del día ${detail.day}</h3><button id="close-modal">✕</button></div><p class="text-sm text-gray-600">Promedio diario de exposición al sol</p><p class="text-3xl font-bold text-gray-800 mt-1">${detail.minutes} min</p><div class="mt-3 inline-flex px-3 py-1 rounded-full text-xs font-bold ${exposure.chip}">${exposure.level}</div><p class="text-sm text-gray-500 mt-3">UV máximo registrado: <span class="font-semibold text-gray-700">${detail.uv}</span></p><p class="text-sm text-gray-500">Referencia semanal: ${detail.fullDay}</p></div></div>`;
+  }
+  if (state.ui.modal === 'chart-help') {
+    return `<div class="fixed inset-0 z-[145] bg-black/50 flex items-center justify-center p-6"><div class="bg-white w-full max-w-sm rounded-3xl p-5"><div class="flex justify-between items-center mb-2"><h3 class="font-bold">Cómo leer esta gráfica</h3><button id="close-modal">✕</button></div><p class="text-sm text-gray-600 mb-2">Cada barra representa los <strong>minutos de exposición solar promedio de ese día</strong>.</p><ul class="text-sm text-gray-600 list-disc pl-5 space-y-1"><li>Barra más alta = más minutos promedio de exposición ese día.</li><li>Barra más baja = menos tiempo al sol.</li><li>Usa estos datos para detectar días con sobreexposición y ajustar tu protección.</li></ul></div></div>`;
   }
   if (state.ui.modal === 'band') {
     return `<div class="fixed inset-0 z-[140] bg-black/50 flex items-end"><div class="w-full max-w-[430px] mx-auto bg-white rounded-t-3xl p-5"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-lg">Pulsera UV • Especificaciones</h3><button id="close-modal">✕</button></div><div class="space-y-3 text-sm"><div class="flex justify-between"><span class="text-gray-500">Modelo</span><span class="font-semibold">HB-UV Sense V2</span></div><div class="flex justify-between"><span class="text-gray-500">Batería</span><span class="font-semibold">84% (3 días estimados)</span></div><div class="flex justify-between"><span class="text-gray-500">Frecuencia</span><span class="font-semibold">Cada 5 min</span></div><div class="flex justify-between"><span class="text-gray-500">Última sincronización</span><span class="font-semibold">Hace 1 min</span></div><div class="flex justify-between"><span class="text-gray-500">Firmware</span><span class="font-semibold">v1.8.4</span></div></div><button id="force-sync" class="mt-5 w-full bg-orange-500 text-white py-3 rounded-2xl font-bold">Sincronizar ahora</button></div></div>`;
@@ -258,16 +282,6 @@ function dashboardView() {
   const view = state.dashboard.currentView;
   const content = view === 'home' ? homeContent() : view === 'history' ? historyContent() : profileContent();
   return wrapScreen('bg-[#FFFBF2]', `<div class="h-dvh overflow-y-auto hide-scroll pt-0">${content}</div><div class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)]"><div class="bg-white px-2 py-3 rounded-3xl border border-gray-50 flex justify-around items-center shadow-[0_10px_30px_-5px_rgba(0,0,0,0.1)]"><button data-view="home" class="w-12 h-12 ${view==='home'?'bg-[#FFEDE1] text-orange-600':'text-gray-400'} rounded-2xl flex items-center justify-center"><i data-lucide="home"></i></button><button data-view="history" class="w-12 h-12 ${view==='history'?'bg-[#FFEDE1] text-orange-600':'text-gray-400'} rounded-2xl flex items-center justify-center"><i data-lucide="clock"></i></button><button data-view="profile" class="w-12 h-12 ${view==='profile'?'bg-[#FFEDE1] text-orange-600':'text-gray-400'} rounded-2xl flex items-center justify-center"><i data-lucide="user"></i></button></div></div>${modalView()}`);
-}
-
-function downloadHistoryCSV() {
-  const rows = ['Dia,Minutos,UV Max'];
-  state.dashboard.weeklyData.forEach((d) => rows.push(`${d.fullDay},${d.minutes},${d.uv}`));
-  const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'historial_uv.csv';
-  a.click();
 }
 
 function bind() {
@@ -316,7 +330,14 @@ function bind() {
   document.querySelectorAll('[data-bar]').forEach((el) => el.addEventListener('click', () => { const i = Number(el.dataset.bar); state.dashboard.selectedDay = state.dashboard.selectedDay === i ? null : i; render(); }));
   document.getElementById('close-day')?.addEventListener('click', () => { state.dashboard.selectedDay = null; render(); });
   document.getElementById('calendar-btn')?.addEventListener('click', () => { state.ui.modal = 'calendar'; render(); });
-  document.getElementById('download-btn')?.addEventListener('click', () => { downloadHistoryCSV(); showToast('Reporte descargado'); });
+  document.querySelectorAll('[data-calendar-day]').forEach((el) => el.addEventListener('click', () => {
+    const day = Number(el.dataset.calendarDay);
+    const source = state.dashboard.weeklyData[(day - 1) % state.dashboard.weeklyData.length];
+    state.ui.modalData = { day, minutes: source.minutes, uv: source.uv, fullDay: source.fullDay };
+    state.ui.modal = 'calendar-day';
+    render();
+  }));
+  document.getElementById('chart-help')?.addEventListener('click', () => { state.ui.modal = 'chart-help'; render(); });
   document.getElementById('toggle-all-recs')?.addEventListener('click', () => { state.dashboard.showAllRecommendations = !state.dashboard.showAllRecommendations; render(); });
 
   document.getElementById('toggle-edit')?.addEventListener('click', () => { state.profile.isEditing = !state.profile.isEditing; render(); showToast(state.profile.isEditing ? 'Modo edición activado' : 'Modo edición desactivado'); });
@@ -330,7 +351,7 @@ function bind() {
   document.getElementById('band-settings')?.addEventListener('click', () => { state.ui.modal = 'band'; render(); });
   document.getElementById('force-sync')?.addEventListener('click', () => { showToast('Pulsera sincronizada'); state.ui.modal = ''; render(); });
 
-  document.getElementById('close-modal')?.addEventListener('click', () => { state.ui.modal = ''; render(); });
+  document.getElementById('close-modal')?.addEventListener('click', () => { state.ui.modal = ''; state.ui.modalData = null; render(); });
   document.getElementById('logout')?.addEventListener('click', () => { setTimeout(() => { stopCameraPreview(); state.isLoggedIn = false; state.username = ''; state.authView = 'login'; state.ui.modal = ''; render(); }, 500); });
 }
 
