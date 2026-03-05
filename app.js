@@ -47,6 +47,7 @@ const state = {
   ui: {
     modal: '',
     modalData: null,
+    calendarOffset: 0,
   },
 };
 
@@ -248,25 +249,44 @@ function profileContent() {
 </div>`;
 }
 
+
+function buildCalendarEntries(offset = 0) {
+  const base = new Date();
+  base.setDate(1);
+  base.setMonth(base.getMonth() + offset);
+
+  const year = base.getFullYear();
+  const month = base.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7;
+  const week = state.dashboard.weeklyData;
+
+  const entries = Array.from({ length: daysInMonth }).map((_, i) => {
+    const day = i + 1;
+    const source = week[(i + Math.abs(offset) * 2) % week.length];
+    const variation = ((day * 5 + offset * 7) % 9) - 4;
+    const minutes = Math.max(5, source.minutes + variation);
+    const uv = Math.max(1, +(source.uv + variation * 0.1).toFixed(1));
+    const exposure = getExposureMeta(minutes);
+    return { day, month, year, minutes, uv, sourceDay: source.fullDay, exposure };
+  });
+
+  return {
+    monthLabel: base.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }),
+    firstWeekday,
+    entries,
+  };
+}
+
 function modalView() {
   if (state.ui.modal === 'calendar') {
-    const now = new Date();
-    const monthLabel = now.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-    const week = state.dashboard.weeklyData;
-    const days = Array.from({ length: 30 }).map((_, i) => {
-      const source = week[i % week.length];
-      return { day: i + 1, minutes: source.minutes, uv: source.uv, fullDay: source.fullDay };
-    });
-    return `<div class="fixed inset-0 z-[140] bg-black/50 flex items-end"><div class="w-full max-w-[430px] mx-auto bg-white rounded-t-3xl p-5"><div class="flex justify-between items-center mb-3"><div class="w-8"></div><h3 class="font-bold text-lg capitalize text-center">${monthLabel}</h3><button id="close-modal">✕</button></div><div class="grid grid-cols-7 gap-2 text-center text-[11px] text-gray-400 mb-2"><span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span></div><div class="grid grid-cols-7 gap-2 text-center text-xs">${days.map((x) => { const exposure = getExposureMeta(x.minutes); return `<button data-calendar-day="${x.day}" class="py-2 rounded-lg border ${exposure.dayBg}" title="${x.day}: ${x.minutes} min promedio">${x.day}</button>`; }).join('')}</div><p class="text-[11px] text-gray-500 mt-3">Colores: verde = exposición segura, amarillo = media, rojo = alta.</p></div></div>`;
-  }
-  if (state.ui.modal === 'calendar-day') {
-    const detail = state.ui.modalData;
-    if (!detail) return '';
-    const exposure = getExposureMeta(detail.minutes);
-    return `<div class="fixed inset-0 z-[145] bg-black/50 flex items-center justify-center p-6"><div class="bg-white w-full max-w-sm rounded-3xl p-5"><div class="flex justify-between items-center mb-2"><h3 class="font-bold">Detalle del día ${detail.day}</h3><button id="close-modal">✕</button></div><p class="text-sm text-gray-600">Promedio diario de exposición al sol</p><p class="text-3xl font-bold text-gray-800 mt-1">${detail.minutes} min</p><div class="mt-3 inline-flex px-3 py-1 rounded-full text-xs font-bold ${exposure.chip}">${exposure.level}</div><p class="text-sm text-gray-500 mt-3">UV máximo registrado: <span class="font-semibold text-gray-700">${detail.uv}</span></p><p class="text-sm text-gray-500">Referencia semanal: ${detail.fullDay}</p></div></div>`;
+    const model = buildCalendarEntries(state.ui.calendarOffset);
+    const selected = state.ui.modalData;
+
+    return `<div class="fixed inset-0 z-[140] bg-black/50 flex items-end"><div class="w-full max-w-[430px] mx-auto bg-white rounded-t-3xl p-5 relative"><div class="flex justify-between items-center mb-3"><button id="calendar-prev" class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center" aria-label="Mes anterior">‹</button><h3 class="font-bold text-lg capitalize text-center">${model.monthLabel}</h3><button id="calendar-next" class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center" aria-label="Mes siguiente">›</button></div><div class="grid grid-cols-7 gap-2 text-center text-[11px] text-gray-400 mb-2"><span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span></div><div class="grid grid-cols-7 gap-2 text-center text-xs">${Array.from({ length: model.firstWeekday }).map(() => '<div></div>').join('')}${model.entries.map((x) => `<button data-calendar-day="${x.day}" data-calendar-month="${x.month}" data-calendar-year="${x.year}" data-calendar-minutes="${x.minutes}" data-calendar-uv="${x.uv}" data-calendar-level="${x.exposure.level}" data-calendar-source="${x.sourceDay}" class="py-2 rounded-lg border ${x.exposure.dayBg}" title="${x.day}: ${x.minutes} min promedio">${x.day}</button>`).join('')}</div>${selected ? `<div class="absolute left-5 right-5 bottom-5 bg-white border border-orange-100 rounded-2xl p-3 shadow-xl"><div class="flex items-center justify-between mb-1"><p class="text-sm font-bold text-gray-800">Día ${selected.day}</p><button id="calendar-popover-close" class="text-gray-400">✕</button></div><p class="text-xs text-gray-600">Promedio diario: <strong>${selected.minutes} min</strong> de exposición solar.</p><p class="text-xs text-gray-600 mt-1">UV máximo: <strong>${selected.uv}</strong> • Nivel: <strong>${selected.level}</strong></p><p class="text-[11px] text-gray-500 mt-1">Referencia de historial: ${selected.sourceDay}</p></div>` : ''}<div class="flex justify-between items-center mt-3"><p class="text-[11px] text-gray-500">Colores: verde = segura, amarillo = media, rojo = alta.</p><button id="close-modal" class="text-sm text-gray-500">Cerrar</button></div></div></div>`;
   }
   if (state.ui.modal === 'chart-help') {
-    return `<div class="fixed inset-0 z-[145] bg-black/50 flex items-center justify-center p-6"><div class="bg-white w-full max-w-sm rounded-3xl p-5"><div class="flex justify-between items-center mb-2"><h3 class="font-bold">Cómo leer esta gráfica</h3><button id="close-modal">✕</button></div><p class="text-sm text-gray-600 mb-2">Cada barra representa los <strong>minutos de exposición solar promedio de ese día</strong>.</p><ul class="text-sm text-gray-600 list-disc pl-5 space-y-1"><li>Barra más alta = más minutos promedio de exposición ese día.</li><li>Barra más baja = menos tiempo al sol.</li><li>Usa estos datos para detectar días con sobreexposición y ajustar tu protección.</li></ul></div></div>`;
+    return `<div class="fixed inset-0 z-[145] bg-black/50 flex items-center justify-center p-6"><div class="bg-white w-full max-w-sm rounded-3xl p-5"><div class="flex justify-between items-center mb-2"><h3 class="font-bold">Cómo interpretar Historial</h3><button id="close-modal">✕</button></div><p class="text-sm text-gray-600 mb-2">La gráfica muestra el <strong>tiempo promedio diario de exposición al sol</strong> (en minutos) para cada día.</p><ul class="text-sm text-gray-600 list-disc pl-5 space-y-1"><li><strong>Promedio diario:</strong> minutos promedio que estuviste expuesto(a) al sol ese día.</li><li><strong>Minutos mostrados:</strong> mientras más minutos, mayor exposición.</li><li><strong>Barras:</strong> una barra más alta significa más tiempo al sol ese día.</li></ul><div class="mt-3 text-sm text-gray-600"><p class="font-semibold mb-1">Colores del calendario:</p><p><span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-2"></span>Verde: exposición segura.</p><p><span class="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-2"></span>Amarillo: exposición media (requiere más protección).</p><p><span class="inline-block w-2 h-2 rounded-full bg-red-500 mr-2"></span>Rojo: exposición alta (riesgo elevado).</p></div></div></div>`;
   }
   if (state.ui.modal === 'band') {
     return `<div class="fixed inset-0 z-[140] bg-black/50 flex items-end"><div class="w-full max-w-[430px] mx-auto bg-white rounded-t-3xl p-5"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-lg">Pulsera UV • Especificaciones</h3><button id="close-modal">✕</button></div><div class="space-y-3 text-sm"><div class="flex justify-between"><span class="text-gray-500">Modelo</span><span class="font-semibold">HB-UV Sense V2</span></div><div class="flex justify-between"><span class="text-gray-500">Batería</span><span class="font-semibold">84% (3 días estimados)</span></div><div class="flex justify-between"><span class="text-gray-500">Frecuencia</span><span class="font-semibold">Cada 5 min</span></div><div class="flex justify-between"><span class="text-gray-500">Última sincronización</span><span class="font-semibold">Hace 1 min</span></div><div class="flex justify-between"><span class="text-gray-500">Firmware</span><span class="font-semibold">v1.8.4</span></div></div><button id="force-sync" class="mt-5 w-full bg-orange-500 text-white py-3 rounded-2xl font-bold">Sincronizar ahora</button></div></div>`;
@@ -329,14 +349,22 @@ function bind() {
 
   document.querySelectorAll('[data-bar]').forEach((el) => el.addEventListener('click', () => { const i = Number(el.dataset.bar); state.dashboard.selectedDay = state.dashboard.selectedDay === i ? null : i; render(); }));
   document.getElementById('close-day')?.addEventListener('click', () => { state.dashboard.selectedDay = null; render(); });
-  document.getElementById('calendar-btn')?.addEventListener('click', () => { state.ui.modal = 'calendar'; render(); });
+  document.getElementById('calendar-btn')?.addEventListener('click', () => { state.ui.modal = 'calendar'; state.ui.modalData = null; render(); });
   document.querySelectorAll('[data-calendar-day]').forEach((el) => el.addEventListener('click', () => {
-    const day = Number(el.dataset.calendarDay);
-    const source = state.dashboard.weeklyData[(day - 1) % state.dashboard.weeklyData.length];
-    state.ui.modalData = { day, minutes: source.minutes, uv: source.uv, fullDay: source.fullDay };
-    state.ui.modal = 'calendar-day';
+    state.ui.modalData = {
+      day: Number(el.dataset.calendarDay),
+      month: Number(el.dataset.calendarMonth),
+      year: Number(el.dataset.calendarYear),
+      minutes: Number(el.dataset.calendarMinutes),
+      uv: Number(el.dataset.calendarUv),
+      level: el.dataset.calendarLevel,
+      sourceDay: el.dataset.calendarSource,
+    };
     render();
   }));
+  document.getElementById('calendar-prev')?.addEventListener('click', () => { state.ui.calendarOffset -= 1; state.ui.modalData = null; render(); });
+  document.getElementById('calendar-next')?.addEventListener('click', () => { state.ui.calendarOffset += 1; state.ui.modalData = null; render(); });
+  document.getElementById('calendar-popover-close')?.addEventListener('click', () => { state.ui.modalData = null; render(); });
   document.getElementById('chart-help')?.addEventListener('click', () => { state.ui.modal = 'chart-help'; render(); });
   document.getElementById('toggle-all-recs')?.addEventListener('click', () => { state.dashboard.showAllRecommendations = !state.dashboard.showAllRecommendations; render(); });
 
