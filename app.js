@@ -74,7 +74,7 @@ function loadUsers() {
     if (!stored) return [];
     const parsed = JSON.parse(stored);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((u) => typeof u?.username === 'string' && typeof u?.password === 'string');
+    return parsed.filter((u) => typeof u?.username === 'string' && typeof u?.password === 'string').map((u) => ({ username: u.username, password: u.password, email: u.email || `${u.username}@demo.com`, displayName: u.displayName || u.username, avatar: u.avatar || '' }));
   } catch {
     return [];
   }
@@ -86,6 +86,22 @@ function saveUsers() {
   } catch {
     // ignore storage failures
   }
+}
+
+
+function ensureDefaultDemoUser() {
+  const exists = state.users.some((u) => u.username?.toLowerCase() === 'admin');
+  if (exists) return;
+  state.users.push({ username: 'admin', email: 'admin@demo.com', password: '123', displayName: 'Administrador', avatar: '' });
+  saveUsers();
+}
+
+function getCurrentUser() {
+  return state.users.find((u) => u.username === state.username) || null;
+}
+
+function getUserDisplayName(user) {
+  return user?.displayName?.trim() || user?.username || state.username || 'Usuario';
 }
 
 const formatTime = (d = new Date()) => d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -237,15 +253,22 @@ function historyContent() {
 function profileContent() {
   const p = state.profile;
   const spfIndex = spfOptions.indexOf(p.spf);
+  const user = getCurrentUser();
+  const displayName = getUserDisplayName(user);
+  const email = user?.email || 'sin-correo@demo.com';
+  const avatar = user?.avatar || '';
+
   return `<div class="px-6 pt-10 pb-32 animate-fade-in relative"><div class="flex items-center justify-between mb-5 pt-4"><div><div class="flex items-center gap-2"><i data-lucide="user" class="text-orange-500"></i><h1 class="text-3xl font-bold">Perfil</h1></div><p class="text-xs text-gray-500">Cuenta y configuración</p></div><button id="toggle-edit" class="p-2.5 rounded-xl bg-white border border-orange-100 ${p.isEditing ? 'bg-orange-50 text-orange-600' : 'text-gray-400'}"><i data-lucide="edit-3"></i></button></div>
-  <div class="bg-white rounded-[2rem] p-5 shadow-xl mb-5 border border-white"><div class="flex items-center gap-4 mb-6"><div class="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white text-2xl font-medium">${(state.username || 'U').charAt(0).toUpperCase()}</div><div><h2 class="text-xl text-gray-800 font-bold">${state.username || 'Usuario'}</h2><p class="text-xs text-gray-400 font-medium">Cuenta activa</p></div></div>
-    <label class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-2 block">TU TIPO DE PIEL</label>
+  <div class="bg-white rounded-[2rem] p-5 shadow-xl mb-5 border border-white"><div class="flex items-center gap-4 mb-2">${avatar ? `<img src="${avatar}" alt="Foto de perfil" class="w-16 h-16 rounded-full object-cover border border-orange-100" />` : `<div class="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white text-2xl font-medium">${displayName.charAt(0).toUpperCase()}</div>`}<div><h2 class="text-xl text-gray-800 font-bold">${displayName}</h2><p class="text-xs text-gray-500 font-medium">@${user?.username || state.username || 'usuario'}</p><p class="text-xs text-gray-400 font-medium">${email}</p></div></div>
+    <input id="profile-photo-input" type="file" accept="image/*" class="hidden" />
+    <div class="mt-4 bg-gray-50 rounded-2xl p-3 border border-gray-100"><p class="text-[10px] text-gray-400 font-bold uppercase mb-2">Gestión de cuenta</p><div class="grid grid-cols-2 gap-2"><button id="change-display-name" class="px-3 py-2 rounded-xl bg-white border border-gray-200 text-xs font-semibold text-gray-700">Cambiar nombre</button><button id="change-username" class="px-3 py-2 rounded-xl bg-white border border-gray-200 text-xs font-semibold text-gray-700">Cambiar usuario</button><button id="change-password" class="px-3 py-2 rounded-xl bg-white border border-gray-200 text-xs font-semibold text-gray-700">Cambiar contraseña</button><button id="change-photo" class="px-3 py-2 rounded-xl bg-white border border-gray-200 text-xs font-semibold text-gray-700">Cambiar foto</button></div></div>
+    <label class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-4 mb-2 block">TU TIPO DE PIEL</label>
     <div class="flex gap-2"><div class="relative flex-1"><i data-lucide="droplets" class="absolute left-3 top-1/2 -translate-y-1/2 text-orange-500"></i><select id="skin-select" ${p.isEditing ? '' : 'disabled'} class="w-full appearance-none bg-gray-50 border border-gray-100 text-gray-700 py-3 pl-10 pr-8 rounded-2xl font-bold text-sm disabled:opacity-60">${skinTypes.map((s, i) => `<option value="${i}" ${i === p.skinTypeIndex ? 'selected' : ''}>${s.type}</option>`).join('')}</select><i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"></i></div><button id="start-camera" ${p.isEditing ? '' : 'disabled'} class="bg-orange-500 text-white p-3 rounded-2xl disabled:opacity-50"><i data-lucide="scan-line"></i></button></div>
     <p class="text-[10px] text-gray-400 mt-2 italic">${skinTypes[p.skinTypeIndex].description}</p></div>
   <div class="space-y-3 mb-6"><div class="bg-white rounded-2xl p-4 border border-gray-100 flex items-start gap-3"><div class="bg-green-50 p-2.5 rounded-full"><i data-lucide="shield" class="text-green-500"></i></div><div class="flex-1"><p class="text-[10px] text-gray-400 font-bold uppercase mb-2">FPS ACTUAL</p><div class="flex items-center justify-between"><button id="spf-dec" ${(spfIndex===0 || !p.isEditing)?'disabled':''} class="p-2 rounded-xl ${(spfIndex===0 || !p.isEditing)?'bg-gray-100 text-gray-300':'bg-orange-50 text-orange-600'}"><i data-lucide="chevron-left"></i></button><p class="text-3xl text-gray-800 font-bold">${p.spf}+</p><button id="spf-inc" ${(spfIndex===spfOptions.length-1 || !p.isEditing)?'disabled':''} class="p-2 rounded-xl ${(spfIndex===spfOptions.length-1 || !p.isEditing)?'bg-gray-100 text-gray-300':'bg-orange-50 text-orange-600'}"><i data-lucide="chevron-right"></i></button></div></div></div>
   <div class="bg-white rounded-2xl p-4 border border-gray-100 flex items-center justify-between"><div class="flex items-center gap-3"><div class="bg-yellow-50 p-2.5 rounded-full"><i data-lucide="bell" class="text-yellow-600"></i></div><div><p class="text-gray-800 font-bold text-sm">Notificaciones</p><p class="text-[10px] text-gray-400 font-medium">Alertas activas</p></div></div><button id="toggle-notifications" class="w-11 h-6 rounded-full flex items-center p-1 ${p.notifications?'bg-orange-500':'bg-gray-200'}"><div class="w-4 h-4 bg-white rounded-full ${p.notifications?'translate-x-5':'translate-x-0'}"></div></button></div></div>
   <div class="space-y-3"><button id="band-settings" class="w-full bg-white rounded-2xl p-4 flex items-center justify-between border border-gray-100"><div class="flex items-center gap-3"><i data-lucide="settings" class="text-gray-400"></i><span class="text-sm text-gray-600 font-medium">Configuración de pulsera</span></div><i data-lucide="chevron-right" class="text-gray-300"></i></button><button id="logout" class="w-full bg-red-50 rounded-2xl p-4 flex items-center justify-between border border-red-100"><div class="flex items-center gap-3"><i data-lucide="log-out" class="text-red-500"></i><span class="text-sm text-red-600 font-bold">Cerrar sesión</span></div></button></div>
-  ${p.showCamera ? `<div class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center"><div class="absolute top-4 left-0 right-0 p-4 flex justify-between items-center"><button id="stop-camera" class="bg-black/40 p-2 rounded-full text-white">✕</button><span class="text-white font-medium bg-black/40 px-3 py-1 rounded-full text-sm">Escáner IA</span><div class="w-10"></div></div><div class="w-full h-full relative flex items-center justify-center bg-gray-900"><div class="relative w-64 h-80 border-2 border-white/40 rounded-[2rem] overflow-hidden bg-black"><video id="camera-feed" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover ${cameraPermissionError ? 'hidden' : ''}"></video>${cameraPermissionError ? '<div class="absolute inset-0 flex items-center justify-center text-white/90 text-sm px-6 text-center">No se pudo abrir tu cámara. Puedes seguir usando la simulación.</div>' : ''}${p.isScanning ? '<div class="absolute top-0 left-0 w-full h-1.5 bg-orange-500 shadow-[0_0_20px_rgba(249,115,22,1)] animate-scan z-20"></div>' : ''}</div><p class="absolute bottom-32 text-white/90 text-sm font-medium bg-black/40 px-6 py-2 rounded-full">${p.isScanning ? 'Analizando pigmentación...' : 'Alinea tu rostro en el marco'}</p></div><div class="absolute bottom-10 left-0 right-0 flex items-center justify-center"><button id="scan-skin" ${p.isScanning?'disabled':''} class="w-20 h-20 p-1.5 rounded-full border-[5px] border-white"><div class="w-full h-full bg-white rounded-full shadow-lg"></div></button></div></div>` : ''}
+  ${p.showCamera ? `<div class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center"><div class="absolute top-4 left-0 right-0 p-4 flex justify-between items-center"><button data-stop-camera class="bg-black/40 p-2 rounded-full text-white text-xl">✕</button><span class="text-white font-medium bg-black/40 px-3 py-1 rounded-full text-sm">Escáner IA</span><button data-stop-camera class="bg-black/40 p-2 rounded-full text-white text-xl">✕</button></div><div class="w-full h-full relative flex items-center justify-center bg-gray-900"><div class="relative w-64 h-80 border-2 border-white/40 rounded-[2rem] overflow-hidden bg-black"><video id="camera-feed" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover ${cameraPermissionError ? 'hidden' : ''}"></video>${cameraPermissionError ? '<div class="absolute inset-0 flex items-center justify-center text-white/90 text-sm px-6 text-center">No se pudo abrir tu cámara. Puedes seguir usando la simulación.</div>' : ''}${p.isScanning ? '<div class="absolute top-0 left-0 w-full h-1.5 bg-orange-500 shadow-[0_0_20px_rgba(249,115,22,1)] animate-scan z-20"></div>' : ''}</div><p class="absolute bottom-32 text-white/90 text-sm font-medium bg-black/40 px-6 py-2 rounded-full">${p.isScanning ? 'Analizando pigmentación...' : 'Alinea tu rostro en el marco'}</p></div><div class="absolute bottom-10 left-0 right-0 flex items-center justify-center"><button id="scan-skin" ${p.isScanning?'disabled':''} class="w-20 h-20 p-1.5 rounded-full border-[5px] border-white"><div class="w-full h-full bg-white rounded-full shadow-lg"></div></button></div></div>` : ''}
 </div>`;
 }
 
@@ -321,7 +344,8 @@ function bind() {
   document.getElementById('forgot-code-form')?.addEventListener('submit', (e) => { e.preventDefault(); if (state.forgotCode.join('').length !== 4) return showToast('Completa 4 dígitos'); setTimeout(() => { state.forgotStep = 'success'; render(); showToast('Código verificado'); }, 800); });
   document.getElementById('forgot-back-login')?.addEventListener('click', () => { state.authView = 'login'; state.forgotStep = 'email'; state.forgotCode = ['', '', '', '']; render(); });
   document.getElementById('create-back')?.addEventListener('click', () => { state.authView = 'login'; render(); });
-  document.getElementById('create-form')?.addEventListener('submit', (e) => { e.preventDefault(); const username = document.getElementById('create-user')?.value.trim(); const password = document.getElementById('create-pass')?.value || ''; if (!username || !password) return showToast('Completa usuario y contraseña'); const exists = state.users.some((u) => u.username.toLowerCase() === username.toLowerCase()); if (exists) return showToast('Ese usuario ya existe'); state.users.push({ username, password }); saveUsers(); state.loginUser = username; state.loginPass = password; state.authView = 'login'; render(); showToast('Cuenta creada'); });
+  document.getElementById('create-form')?.addEventListener('submit', (e) => { e.preventDefault(); const username = document.getElementById('create-user')?.value.trim(); const password = document.getElementById('create-pass')?.value || ''; if (!username || !password) return showToast('Completa usuario y contraseña'); const exists = state.users.some((u) => u.username.toLowerCase() === username.toLowerCase()); if (exists) return showToast('Ese usuario ya existe'); const email = (document.getElementById('create-email')?.value || '').trim() || `${username.toLowerCase()}@demo.com`;
+  state.users.push({ username, email, password, displayName: username, avatar: '' }); saveUsers(); state.loginUser = username; state.loginPass = password; state.authView = 'login'; render(); showToast('Cuenta creada'); });
 
   document.querySelectorAll('[data-view]').forEach((btn) => btn.addEventListener('click', () => { state.dashboard.currentView = btn.dataset.view; render(); }));
   document.getElementById('refresh')?.addEventListener('click', () => { state.dashboard.isRefreshing = true; render(); setTimeout(() => {
@@ -370,8 +394,59 @@ function bind() {
 
   document.getElementById('toggle-edit')?.addEventListener('click', () => { state.profile.isEditing = !state.profile.isEditing; render(); showToast(state.profile.isEditing ? 'Modo edición activado' : 'Modo edición desactivado'); });
   document.getElementById('skin-select')?.addEventListener('change', (e) => { if (!state.profile.isEditing) return; state.profile.skinTypeIndex = Number(e.target.value); render(); });
+
+  document.getElementById('change-display-name')?.addEventListener('click', () => {
+    const user = getCurrentUser();
+    if (!user) return;
+    const next = prompt('Nuevo nombre para mostrar', user.displayName || user.username);
+    if (!next || !next.trim()) return;
+    user.displayName = next.trim();
+    saveUsers();
+    render();
+    showToast('Nombre actualizado');
+  });
+  document.getElementById('change-username')?.addEventListener('click', () => {
+    const user = getCurrentUser();
+    if (!user) return;
+    const next = prompt('Nuevo nombre de usuario', user.username);
+    if (!next || !next.trim()) return;
+    const candidate = next.trim();
+    if (state.users.some((u) => u !== user && u.username.toLowerCase() === candidate.toLowerCase())) return showToast('Ese usuario ya existe');
+    user.username = candidate;
+    if (!user.displayName) user.displayName = candidate;
+    state.username = candidate;
+    saveUsers();
+    render();
+    showToast('Usuario actualizado');
+  });
+  document.getElementById('change-password')?.addEventListener('click', () => {
+    const user = getCurrentUser();
+    if (!user) return;
+    const next = prompt('Nueva contraseña');
+    if (!next || next.length < 3) return showToast('Mínimo 3 caracteres');
+    user.password = next;
+    saveUsers();
+    showToast('Contraseña actualizada');
+  });
+  document.getElementById('change-photo')?.addEventListener('click', () => {
+    document.getElementById('profile-photo-input')?.click();
+  });
+  document.getElementById('profile-photo-input')?.addEventListener('change', (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const user = getCurrentUser();
+    if (!user) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      user.avatar = String(reader.result || '');
+      saveUsers();
+      render();
+      showToast('Foto de perfil actualizada');
+    };
+    reader.readAsDataURL(file);
+  });
   document.getElementById('start-camera')?.addEventListener('click', async () => { if (!state.profile.isEditing) return showToast('Activa modo edición'); state.profile.showCamera = true; render(); await startCameraPreview(); });
-  document.getElementById('stop-camera')?.addEventListener('click', () => { state.profile.showCamera = false; state.profile.isScanning = false; stopCameraPreview(); render(); });
+  document.querySelectorAll('[data-stop-camera]').forEach((btn) => btn.addEventListener('click', () => { state.profile.showCamera = false; state.profile.isScanning = false; stopCameraPreview(); render(); }));
   document.getElementById('scan-skin')?.addEventListener('click', () => { state.profile.isScanning = true; render(); setTimeout(() => { state.profile.skinTypeIndex = Math.floor(Math.random() * 3) + 1; state.profile.isScanning = false; state.profile.showCamera = false; stopCameraPreview(); render(); showToast('Escaneo completado'); }, 2200); });
   document.getElementById('spf-inc')?.addEventListener('click', () => { if (!state.profile.isEditing) return showToast('Activa modo edición'); const i = spfOptions.indexOf(state.profile.spf); if (i < spfOptions.length - 1) state.profile.spf = spfOptions[i + 1]; render(); });
   document.getElementById('spf-dec')?.addEventListener('click', () => { if (!state.profile.isEditing) return showToast('Activa modo edición'); const i = spfOptions.indexOf(state.profile.spf); if (i > 0) state.profile.spf = spfOptions[i - 1]; render(); });
@@ -393,4 +468,5 @@ function render() {
 }
 
 state.users = loadUsers();
+ensureDefaultDemoUser();
 render();
