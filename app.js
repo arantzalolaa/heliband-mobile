@@ -104,6 +104,31 @@ function getUserDisplayName(user) {
   return user?.displayName?.trim() || user?.username || state.username || 'Usuario';
 }
 
+
+function normalizeUsername(value = '') {
+  return value.trim().toLowerCase();
+}
+
+function isUsernameAvailable(username, currentUsername = '') {
+  const candidate = normalizeUsername(username);
+  const current = normalizeUsername(currentUsername);
+  if (!candidate) return false;
+  if (candidate === current) return true;
+  return !state.users.some((u) => normalizeUsername(u.username) === candidate);
+}
+
+function validatePassword(password = '') {
+  if (password.length < 8) return 'La contraseña debe tener mínimo 8 caracteres.';
+  if (!/[A-Za-z]/.test(password)) return 'La contraseña debe incluir al menos una letra.';
+  if (!/\d/.test(password)) return 'La contraseña debe incluir al menos un número.';
+  return '';
+}
+
+function validateName(name = '') {
+  if (!name.trim()) return 'El nombre no puede estar vacío.';
+  return '';
+}
+
 const formatTime = (d = new Date()) => d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
 const formatDate = (d = new Date()) => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 
@@ -198,8 +223,9 @@ function forgotView() {
 }
 
 function createView() {
-  return wrapScreen('bg-gradient-to-b from-[#FFE8B6] via-[#FFF5E1] to-white', `<div class="min-h-dvh flex flex-col px-8 pt-20 w-full"><button id="create-back" class="self-start mb-6 text-2xl">←</button><form id="create-form" class="space-y-4"><h2 class="text-2xl font-bold text-center">Crear cuenta</h2><input id="create-user" type="text" placeholder="Nombre de usuario" class="w-full bg-white/80 rounded-2xl px-6 py-4 text-center" /><input id="create-email" type="email" placeholder="Correo" class="w-full bg-white/80 rounded-2xl px-6 py-4 text-center" /><input id="create-pass" type="password" placeholder="Contraseña" class="w-full bg-white/80 rounded-2xl px-6 py-4 text-center" /><button class="w-full bg-orange-500 text-white py-3 rounded-2xl font-bold">Crear cuenta</button></form></div>`);
+  return wrapScreen('bg-gradient-to-b from-[#FFE8B6] via-[#FFF5E1] to-white', `<div class="min-h-dvh flex flex-col px-8 pt-20 w-full"><button id="create-back" class="self-start mb-6 text-2xl">←</button><form id="create-form" class="space-y-4"><h2 class="text-2xl font-bold text-center">Crear cuenta</h2><input id="create-user" type="text" placeholder="Nombre de usuario" class="w-full bg-white/80 rounded-2xl px-6 py-4 text-center" /><p id="create-user-status" class="text-xs text-center text-gray-500 -mt-2"></p><input id="create-email" type="email" placeholder="Correo" class="w-full bg-white/80 rounded-2xl px-6 py-4 text-center" /><input id="create-pass" type="password" placeholder="Contraseña" class="w-full bg-white/80 rounded-2xl px-6 py-4 text-center" /><p class="text-[11px] text-gray-500 text-center -mt-2">Mínimo 8 caracteres, al menos una letra y un número.</p><p id="create-form-error" class="text-xs text-center text-red-500 -mt-2"></p><button class="w-full bg-orange-500 text-white py-3 rounded-2xl font-bold">Crear cuenta</button></form></div>`);
 }
+
 
 function homeContent() {
   const d = state.dashboard;
@@ -258,17 +284,15 @@ function profileContent() {
   const email = user?.email || 'sin-correo@demo.com';
   const avatar = user?.avatar || '';
 
-  return `<div class="px-6 pt-10 pb-32 animate-fade-in relative"><div class="flex items-center justify-between mb-5 pt-4"><div><div class="flex items-center gap-2"><i data-lucide="user" class="text-orange-500"></i><h1 class="text-3xl font-bold">Perfil</h1></div><p class="text-xs text-gray-500">Cuenta y configuración</p></div><button id="toggle-edit" class="p-2.5 rounded-xl bg-white border border-orange-100 ${p.isEditing ? 'bg-orange-50 text-orange-600' : 'text-gray-400'}"><i data-lucide="edit-3"></i></button></div>
+  return `<div class="px-6 pt-10 pb-32 animate-fade-in relative"><div class="flex items-center justify-between mb-5 pt-4"><div><div class="flex items-center gap-2"><i data-lucide="user" class="text-orange-500"></i><h1 class="text-3xl font-bold">Perfil</h1></div><p class="text-xs text-gray-500">Cuenta y configuración</p></div><div class="flex items-center gap-2"><button id="account-settings" class="p-2.5 rounded-xl bg-white border border-orange-100 text-gray-500"><i data-lucide="settings"></i></button><button id="toggle-edit" class="p-2.5 rounded-xl bg-white border border-orange-100 ${p.isEditing ? 'bg-orange-50 text-orange-600' : 'text-gray-400'}"><i data-lucide="edit-3"></i></button></div></div>
   <div class="bg-white rounded-[2rem] p-5 shadow-xl mb-5 border border-white"><div class="flex items-center gap-4 mb-2">${avatar ? `<img src="${avatar}" alt="Foto de perfil" class="w-16 h-16 rounded-full object-cover border border-orange-100" />` : `<div class="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white text-2xl font-medium">${displayName.charAt(0).toUpperCase()}</div>`}<div><h2 class="text-xl text-gray-800 font-bold">${displayName}</h2><p class="text-xs text-gray-500 font-medium">@${user?.username || state.username || 'usuario'}</p><p class="text-xs text-gray-400 font-medium">${email}</p></div></div>
-    <input id="profile-photo-input" type="file" accept="image/*" class="hidden" />
-    <div class="mt-4 bg-gray-50 rounded-2xl p-3 border border-gray-100"><p class="text-[10px] text-gray-400 font-bold uppercase mb-2">Gestión de cuenta</p><div class="grid grid-cols-2 gap-2"><button id="change-display-name" class="px-3 py-2 rounded-xl bg-white border border-gray-200 text-xs font-semibold text-gray-700">Cambiar nombre</button><button id="change-username" class="px-3 py-2 rounded-xl bg-white border border-gray-200 text-xs font-semibold text-gray-700">Cambiar usuario</button><button id="change-password" class="px-3 py-2 rounded-xl bg-white border border-gray-200 text-xs font-semibold text-gray-700">Cambiar contraseña</button><button id="change-photo" class="px-3 py-2 rounded-xl bg-white border border-gray-200 text-xs font-semibold text-gray-700">Cambiar foto</button></div></div>
     <label class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-4 mb-2 block">TU TIPO DE PIEL</label>
     <div class="flex gap-2"><div class="relative flex-1"><i data-lucide="droplets" class="absolute left-3 top-1/2 -translate-y-1/2 text-orange-500"></i><select id="skin-select" ${p.isEditing ? '' : 'disabled'} class="w-full appearance-none bg-gray-50 border border-gray-100 text-gray-700 py-3 pl-10 pr-8 rounded-2xl font-bold text-sm disabled:opacity-60">${skinTypes.map((s, i) => `<option value="${i}" ${i === p.skinTypeIndex ? 'selected' : ''}>${s.type}</option>`).join('')}</select><i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"></i></div><button id="start-camera" ${p.isEditing ? '' : 'disabled'} class="bg-orange-500 text-white p-3 rounded-2xl disabled:opacity-50"><i data-lucide="scan-line"></i></button></div>
     <p class="text-[10px] text-gray-400 mt-2 italic">${skinTypes[p.skinTypeIndex].description}</p></div>
   <div class="space-y-3 mb-6"><div class="bg-white rounded-2xl p-4 border border-gray-100 flex items-start gap-3"><div class="bg-green-50 p-2.5 rounded-full"><i data-lucide="shield" class="text-green-500"></i></div><div class="flex-1"><p class="text-[10px] text-gray-400 font-bold uppercase mb-2">FPS ACTUAL</p><div class="flex items-center justify-between"><button id="spf-dec" ${(spfIndex===0 || !p.isEditing)?'disabled':''} class="p-2 rounded-xl ${(spfIndex===0 || !p.isEditing)?'bg-gray-100 text-gray-300':'bg-orange-50 text-orange-600'}"><i data-lucide="chevron-left"></i></button><p class="text-3xl text-gray-800 font-bold">${p.spf}+</p><button id="spf-inc" ${(spfIndex===spfOptions.length-1 || !p.isEditing)?'disabled':''} class="p-2 rounded-xl ${(spfIndex===spfOptions.length-1 || !p.isEditing)?'bg-gray-100 text-gray-300':'bg-orange-50 text-orange-600'}"><i data-lucide="chevron-right"></i></button></div></div></div>
   <div class="bg-white rounded-2xl p-4 border border-gray-100 flex items-center justify-between"><div class="flex items-center gap-3"><div class="bg-yellow-50 p-2.5 rounded-full"><i data-lucide="bell" class="text-yellow-600"></i></div><div><p class="text-gray-800 font-bold text-sm">Notificaciones</p><p class="text-[10px] text-gray-400 font-medium">Alertas activas</p></div></div><button id="toggle-notifications" class="w-11 h-6 rounded-full flex items-center p-1 ${p.notifications?'bg-orange-500':'bg-gray-200'}"><div class="w-4 h-4 bg-white rounded-full ${p.notifications?'translate-x-5':'translate-x-0'}"></div></button></div></div>
   <div class="space-y-3"><button id="band-settings" class="w-full bg-white rounded-2xl p-4 flex items-center justify-between border border-gray-100"><div class="flex items-center gap-3"><i data-lucide="settings" class="text-gray-400"></i><span class="text-sm text-gray-600 font-medium">Configuración de pulsera</span></div><i data-lucide="chevron-right" class="text-gray-300"></i></button><button id="logout" class="w-full bg-red-50 rounded-2xl p-4 flex items-center justify-between border border-red-100"><div class="flex items-center gap-3"><i data-lucide="log-out" class="text-red-500"></i><span class="text-sm text-red-600 font-bold">Cerrar sesión</span></div></button></div>
-  ${p.showCamera ? `<div class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center"><div class="absolute top-4 left-0 right-0 p-4 flex justify-between items-center"><button data-stop-camera class="bg-black/40 p-2 rounded-full text-white text-xl">✕</button><span class="text-white font-medium bg-black/40 px-3 py-1 rounded-full text-sm">Escáner IA</span><button data-stop-camera class="bg-black/40 p-2 rounded-full text-white text-xl">✕</button></div><div class="w-full h-full relative flex items-center justify-center bg-gray-900"><div class="relative w-64 h-80 border-2 border-white/40 rounded-[2rem] overflow-hidden bg-black"><video id="camera-feed" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover ${cameraPermissionError ? 'hidden' : ''}"></video>${cameraPermissionError ? '<div class="absolute inset-0 flex items-center justify-center text-white/90 text-sm px-6 text-center">No se pudo abrir tu cámara. Puedes seguir usando la simulación.</div>' : ''}${p.isScanning ? '<div class="absolute top-0 left-0 w-full h-1.5 bg-orange-500 shadow-[0_0_20px_rgba(249,115,22,1)] animate-scan z-20"></div>' : ''}</div><p class="absolute bottom-32 text-white/90 text-sm font-medium bg-black/40 px-6 py-2 rounded-full">${p.isScanning ? 'Analizando pigmentación...' : 'Alinea tu rostro en el marco'}</p></div><div class="absolute bottom-10 left-0 right-0 flex items-center justify-center"><button id="scan-skin" ${p.isScanning?'disabled':''} class="w-20 h-20 p-1.5 rounded-full border-[5px] border-white"><div class="w-full h-full bg-white rounded-full shadow-lg"></div></button></div></div>` : ''}
+  ${p.showCamera ? `<div class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center"><div class="absolute top-4 left-0 right-0 p-4 flex justify-between items-center"><button data-stop-camera class="bg-black/40 p-2 rounded-full text-white text-xl">✕</button><span class="text-white font-medium bg-black/40 px-3 py-1 rounded-full text-sm">Escáner IA</span><div class="w-10"></div></div><div class="w-full h-full relative flex items-center justify-center bg-gray-900"><div class="relative w-64 h-80 border-2 border-white/40 rounded-[2rem] overflow-hidden bg-black"><video id="camera-feed" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover ${cameraPermissionError ? 'hidden' : ''}"></video>${cameraPermissionError ? '<div class="absolute inset-0 flex items-center justify-center text-white/90 text-sm px-6 text-center">No se pudo abrir tu cámara. Puedes seguir usando la simulación.</div>' : ''}${p.isScanning ? '<div class="absolute top-0 left-0 w-full h-1.5 bg-orange-500 shadow-[0_0_20px_rgba(249,115,22,1)] animate-scan z-20"></div>' : ''}</div><p class="absolute bottom-32 text-white/90 text-sm font-medium bg-black/40 px-6 py-2 rounded-full">${p.isScanning ? 'Analizando pigmentación...' : 'Alinea tu rostro en el marco'}</p></div><div class="absolute bottom-10 left-0 right-0 flex items-center justify-center"><button id="scan-skin" ${p.isScanning?'disabled':''} class="w-20 h-20 p-1.5 rounded-full border-[5px] border-white"><div class="w-full h-full bg-white rounded-full shadow-lg"></div></button></div></div>` : ''}
 </div>`;
 }
 
@@ -311,6 +335,14 @@ function modalView() {
   if (state.ui.modal === 'chart-help') {
     return `<div class="fixed inset-0 z-[145] bg-black/50 flex items-center justify-center p-6"><div class="bg-white w-full max-w-sm rounded-3xl p-5"><div class="flex justify-between items-center mb-2"><h3 class="font-bold">Cómo interpretar Historial</h3><button id="close-modal">✕</button></div><p class="text-sm text-gray-600 mb-2">La gráfica muestra el <strong>tiempo promedio diario de exposición al sol</strong> (en minutos) para cada día.</p><ul class="text-sm text-gray-600 list-disc pl-5 space-y-1"><li><strong>Promedio diario:</strong> minutos promedio que estuviste expuesto(a) al sol ese día.</li><li><strong>Minutos mostrados:</strong> mientras más minutos, mayor exposición.</li><li><strong>Barras:</strong> una barra más alta significa más tiempo al sol ese día.</li></ul><div class="mt-3 text-sm text-gray-600"><p class="font-semibold mb-1">Colores del calendario:</p><p><span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-2"></span>Verde: exposición segura.</p><p><span class="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-2"></span>Amarillo: exposición media (requiere más protección).</p><p><span class="inline-block w-2 h-2 rounded-full bg-red-500 mr-2"></span>Rojo: exposición alta (riesgo elevado).</p></div></div></div>`;
   }
+
+  if (state.ui.modal === 'account') {
+    const user = getCurrentUser();
+    if (!user) return '';
+    const displayName = getUserDisplayName(user);
+    const avatar = user.avatar || '';
+    return `<div class="fixed inset-0 z-[145] bg-black/50 flex items-end"><div class="w-full max-w-[430px] mx-auto bg-white rounded-t-3xl p-5"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-lg">Gestión de cuenta</h3><button id="close-modal">✕</button></div><form id="account-form" class="space-y-3"><div class="flex items-center gap-3">${avatar ? `<img src="${avatar}" alt="Foto" class="w-14 h-14 rounded-full object-cover border border-orange-100" />` : `<div class="w-14 h-14 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white text-xl font-medium">${displayName.charAt(0).toUpperCase()}</div>`}<div class="flex-1"><p class="text-xs text-gray-400">Foto de perfil</p><button id="account-change-photo" type="button" class="text-sm text-orange-600 font-semibold">Cambiar foto</button><input id="account-photo-input" type="file" accept="image/*" class="hidden" /></div></div><div><label class="text-xs text-gray-500">Nombre</label><input id="account-name" type="text" value="${displayName}" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2" /><p id="account-name-msg" class="text-[11px] text-red-500 mt-1"></p></div><div><label class="text-xs text-gray-500">Nombre de usuario</label><input id="account-username" type="text" value="${user.username}" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2" /><p id="account-user-msg" class="text-[11px] mt-1 text-gray-500"></p></div><div><label class="text-xs text-gray-500">Correo electrónico</label><input type="email" value="${user.email}" readonly class="w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2 text-gray-500" /></div><div><label class="text-xs text-gray-500">Contraseña</label><input id="account-password" type="password" value="${user.password}" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2" /><p id="account-pass-msg" class="text-[11px] text-gray-500 mt-1">Mínimo 8 caracteres, una letra y un número.</p></div><button type="submit" class="w-full bg-orange-500 text-white py-3 rounded-2xl font-bold">Guardar cambios</button></form></div></div>`;
+  }
   if (state.ui.modal === 'band') {
     return `<div class="fixed inset-0 z-[140] bg-black/50 flex items-end"><div class="w-full max-w-[430px] mx-auto bg-white rounded-t-3xl p-5"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-lg">Pulsera UV • Especificaciones</h3><button id="close-modal">✕</button></div><div class="space-y-3 text-sm"><div class="flex justify-between"><span class="text-gray-500">Modelo</span><span class="font-semibold">HB-UV Sense V2</span></div><div class="flex justify-between"><span class="text-gray-500">Batería</span><span class="font-semibold">84% (3 días estimados)</span></div><div class="flex justify-between"><span class="text-gray-500">Frecuencia</span><span class="font-semibold">Cada 5 min</span></div><div class="flex justify-between"><span class="text-gray-500">Última sincronización</span><span class="font-semibold">Hace 1 min</span></div><div class="flex justify-between"><span class="text-gray-500">Firmware</span><span class="font-semibold">v1.8.4</span></div></div><button id="force-sync" class="mt-5 w-full bg-orange-500 text-white py-3 rounded-2xl font-bold">Sincronizar ahora</button></div></div>`;
   }
@@ -333,6 +365,23 @@ function bind() {
   document.getElementById('toggle-pass')?.addEventListener('click', () => { state.showPassword = !state.showPassword; render(); });
   document.getElementById('forgot-btn')?.addEventListener('click', () => { state.authView = 'forgot-password'; render(); });
   document.getElementById('create-btn')?.addEventListener('click', () => { state.authView = 'create-account'; render(); });
+
+  document.getElementById('create-user')?.addEventListener('input', (e) => {
+    const value = e.target.value || '';
+    const msg = document.getElementById('create-user-status');
+    if (!msg) return;
+    if (!value.trim()) {
+      msg.textContent = '';
+      return;
+    }
+    if (isUsernameAvailable(value)) {
+      msg.textContent = 'Nombre de usuario disponible';
+      msg.className = 'text-xs text-center text-green-600 -mt-2';
+    } else {
+      msg.textContent = 'Este nombre de usuario ya está en uso';
+      msg.className = 'text-xs text-center text-red-500 -mt-2';
+    }
+  });
   document.getElementById('login-user')?.addEventListener('input', (e) => { state.loginUser = e.target.value; });
   document.getElementById('login-pass')?.addEventListener('input', (e) => { state.loginPass = e.target.value; });
   document.getElementById('login-form')?.addEventListener('submit', (e) => { e.preventDefault(); if (!state.loginUser.trim() || !state.loginPass.trim()) return; const user = state.users.find((u) => u.username.toLowerCase() === state.loginUser.trim().toLowerCase() && u.password === state.loginPass); if (!user) return showToast('Credenciales inválidas'); state.loadingLogin = true; render(); setTimeout(() => { state.username = user.username; state.isLoggedIn = true; state.loadingLogin = false; render(); showToast('Sesión iniciada'); }, 1500); });
@@ -344,8 +393,50 @@ function bind() {
   document.getElementById('forgot-code-form')?.addEventListener('submit', (e) => { e.preventDefault(); if (state.forgotCode.join('').length !== 4) return showToast('Completa 4 dígitos'); setTimeout(() => { state.forgotStep = 'success'; render(); showToast('Código verificado'); }, 800); });
   document.getElementById('forgot-back-login')?.addEventListener('click', () => { state.authView = 'login'; state.forgotStep = 'email'; state.forgotCode = ['', '', '', '']; render(); });
   document.getElementById('create-back')?.addEventListener('click', () => { state.authView = 'login'; render(); });
-  document.getElementById('create-form')?.addEventListener('submit', (e) => { e.preventDefault(); const username = document.getElementById('create-user')?.value.trim(); const password = document.getElementById('create-pass')?.value || ''; if (!username || !password) return showToast('Completa usuario y contraseña'); const exists = state.users.some((u) => u.username.toLowerCase() === username.toLowerCase()); if (exists) return showToast('Ese usuario ya existe'); const email = (document.getElementById('create-email')?.value || '').trim() || `${username.toLowerCase()}@demo.com`;
-  state.users.push({ username, email, password, displayName: username, avatar: '' }); saveUsers(); state.loginUser = username; state.loginPass = password; state.authView = 'login'; render(); showToast('Cuenta creada'); });
+  document.getElementById('create-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const username = document.getElementById('create-user')?.value.trim() || '';
+    const email = (document.getElementById('create-email')?.value || '').trim();
+    const password = document.getElementById('create-pass')?.value || '';
+    const userMsg = document.getElementById('create-user-status');
+    const formMsg = document.getElementById('create-form-error');
+
+    if (userMsg) userMsg.textContent = '';
+    if (formMsg) formMsg.textContent = '';
+
+    if (!username || !email || !password) {
+      if (formMsg) formMsg.textContent = 'Todos los campos son obligatorios.';
+      return;
+    }
+
+    const nameError = validateName(username);
+    if (nameError) {
+      if (formMsg) formMsg.textContent = nameError;
+      return;
+    }
+
+    if (!isUsernameAvailable(username)) {
+      if (userMsg) {
+        userMsg.textContent = 'Este nombre de usuario ya está en uso';
+        userMsg.className = 'text-xs text-center text-red-500 -mt-2';
+      }
+      return;
+    }
+
+    const passError = validatePassword(password);
+    if (passError) {
+      if (formMsg) formMsg.textContent = passError;
+      return;
+    }
+
+    state.users.push({ username, email, password, displayName: username, avatar: '' });
+    saveUsers();
+    state.loginUser = username;
+    state.loginPass = password;
+    state.authView = 'login';
+    render();
+    showToast('Cuenta creada');
+  });
 
   document.querySelectorAll('[data-view]').forEach((btn) => btn.addEventListener('click', () => { state.dashboard.currentView = btn.dataset.view; render(); }));
   document.getElementById('refresh')?.addEventListener('click', () => { state.dashboard.isRefreshing = true; render(); setTimeout(() => {
@@ -395,43 +486,29 @@ function bind() {
   document.getElementById('toggle-edit')?.addEventListener('click', () => { state.profile.isEditing = !state.profile.isEditing; render(); showToast(state.profile.isEditing ? 'Modo edición activado' : 'Modo edición desactivado'); });
   document.getElementById('skin-select')?.addEventListener('change', (e) => { if (!state.profile.isEditing) return; state.profile.skinTypeIndex = Number(e.target.value); render(); });
 
-  document.getElementById('change-display-name')?.addEventListener('click', () => {
-    const user = getCurrentUser();
-    if (!user) return;
-    const next = prompt('Nuevo nombre para mostrar', user.displayName || user.username);
-    if (!next || !next.trim()) return;
-    user.displayName = next.trim();
-    saveUsers();
-    render();
-    showToast('Nombre actualizado');
+  document.getElementById('account-settings')?.addEventListener('click', () => { state.ui.modal = 'account'; render(); });
+  document.getElementById('account-username')?.addEventListener('input', (e) => {
+    const msg = document.getElementById('account-user-msg');
+    if (!msg) return;
+    const value = e.target.value || '';
+    const current = getCurrentUser()?.username || '';
+    if (!value.trim()) {
+      msg.textContent = 'El nombre de usuario es obligatorio.';
+      msg.className = 'text-[11px] mt-1 text-red-500';
+      return;
+    }
+    if (isUsernameAvailable(value, current)) {
+      msg.textContent = 'Nombre de usuario disponible';
+      msg.className = 'text-[11px] mt-1 text-green-600';
+    } else {
+      msg.textContent = 'Este nombre de usuario ya está en uso';
+      msg.className = 'text-[11px] mt-1 text-red-500';
+    }
   });
-  document.getElementById('change-username')?.addEventListener('click', () => {
-    const user = getCurrentUser();
-    if (!user) return;
-    const next = prompt('Nuevo nombre de usuario', user.username);
-    if (!next || !next.trim()) return;
-    const candidate = next.trim();
-    if (state.users.some((u) => u !== user && u.username.toLowerCase() === candidate.toLowerCase())) return showToast('Ese usuario ya existe');
-    user.username = candidate;
-    if (!user.displayName) user.displayName = candidate;
-    state.username = candidate;
-    saveUsers();
-    render();
-    showToast('Usuario actualizado');
+  document.getElementById('account-change-photo')?.addEventListener('click', () => {
+    document.getElementById('account-photo-input')?.click();
   });
-  document.getElementById('change-password')?.addEventListener('click', () => {
-    const user = getCurrentUser();
-    if (!user) return;
-    const next = prompt('Nueva contraseña');
-    if (!next || next.length < 3) return showToast('Mínimo 3 caracteres');
-    user.password = next;
-    saveUsers();
-    showToast('Contraseña actualizada');
-  });
-  document.getElementById('change-photo')?.addEventListener('click', () => {
-    document.getElementById('profile-photo-input')?.click();
-  });
-  document.getElementById('profile-photo-input')?.addEventListener('change', (e) => {
+  document.getElementById('account-photo-input')?.addEventListener('change', (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const user = getCurrentUser();
@@ -442,9 +519,57 @@ function bind() {
       saveUsers();
       render();
       showToast('Foto de perfil actualizada');
+      state.ui.modal = 'account';
+      render();
     };
     reader.readAsDataURL(file);
   });
+  document.getElementById('account-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const user = getCurrentUser();
+    if (!user) return;
+    const nextName = document.getElementById('account-name')?.value || '';
+    const nextUser = document.getElementById('account-username')?.value || '';
+    const nextPass = document.getElementById('account-password')?.value || '';
+    const nameMsg = document.getElementById('account-name-msg');
+    const userMsg = document.getElementById('account-user-msg');
+    const passMsg = document.getElementById('account-pass-msg');
+    if (nameMsg) nameMsg.textContent = '';
+    if (passMsg) passMsg.textContent = '';
+
+    const nameError = validateName(nextName);
+    if (nameError) {
+      if (nameMsg) nameMsg.textContent = nameError;
+      return;
+    }
+
+    if (!isUsernameAvailable(nextUser, user.username)) {
+      if (userMsg) {
+        userMsg.textContent = 'Este nombre de usuario ya está en uso';
+        userMsg.className = 'text-[11px] mt-1 text-red-500';
+      }
+      return;
+    }
+
+    const passError = validatePassword(nextPass);
+    if (passError) {
+      if (passMsg) {
+        passMsg.textContent = passError;
+        passMsg.className = 'text-[11px] text-red-500 mt-1';
+      }
+      return;
+    }
+
+    user.displayName = nextName.trim();
+    user.username = nextUser.trim();
+    user.password = nextPass;
+    state.username = user.username;
+    saveUsers();
+    state.ui.modal = '';
+    render();
+    showToast('Datos actualizados correctamente');
+  });
+
   document.getElementById('start-camera')?.addEventListener('click', async () => { if (!state.profile.isEditing) return showToast('Activa modo edición'); state.profile.showCamera = true; render(); await startCameraPreview(); });
   document.querySelectorAll('[data-stop-camera]').forEach((btn) => btn.addEventListener('click', () => { state.profile.showCamera = false; state.profile.isScanning = false; stopCameraPreview(); render(); }));
   document.getElementById('scan-skin')?.addEventListener('click', () => { state.profile.isScanning = true; render(); setTimeout(() => { state.profile.skinTypeIndex = Math.floor(Math.random() * 3) + 1; state.profile.isScanning = false; state.profile.showCamera = false; stopCameraPreview(); render(); showToast('Escaneo completado'); }, 2200); });
