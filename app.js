@@ -196,7 +196,11 @@ function getRecommendationText(uv) {
 }
 
 function wrapScreen(gradient, content) {
-  return `<div class="w-full min-h-dvh bg-[#FFFBF2] text-gray-800 font-sans"><div class="screen-shell ${gradient}">${content}</div></div>`;
+  return `<div class="w-full min-h-dvh bg-[#FFFBF2] text-gray-800 font-sans pb-safe">
+            <div class="screen-shell ${gradient}">
+              ${content}
+            </div>
+          </div>`;
 }
 
 function loginView() {
@@ -231,7 +235,7 @@ function homeContent() {
   const d = state.dashboard;
   const uv = getUVStatus(d.currentUV);
   const exposurePercentage = (d.exposureTime / 60) * 100;
-  return `<div class="px-6 pt-10 pb-32 animate-fade-in">
+  return `<div class="px-6 pt-10 pb-safe animate-fade-in">
     <div class="flex items-center justify-between mb-5 pt-4"><div><div class="flex items-center gap-2"><i data-lucide="sun" class="text-orange-500"></i><h1 class="text-3xl font-bold">Inicio</h1></div><p class="text-xs text-gray-500">Hola, ${state.username || 'Usuario'}</p></div><button id="refresh" class="p-2.5 rounded-xl bg-white border border-orange-100 ${d.isRefreshing ? 'animate-spin' : ''}"><i data-lucide="refresh-cw" class="text-orange-500"></i></button></div>
     ${d.showRecommendation ? `<div class="mb-4 animate-slide-down"><div class="${uv.bg} rounded-2xl p-4 shadow-lg border-2 border-orange-200 flex items-start gap-3"><div class="bg-white p-2.5 rounded-full text-orange-500"><i data-lucide="shield"></i></div><div class="flex-1"><p class="text-orange-600/70 text-[10px] font-bold uppercase">RECOMENDACIÓN ACTUAL</p><p class="text-gray-800 font-semibold text-xs">${getRecommendationText(d.currentUV)}</p><p class="text-gray-500 text-[10px] mt-1">UV: ${d.currentUV} • ${uv.label}</p></div><button id="close-rec">✕</button></div></div>` : ''}
     <div class="bg-white rounded-[2rem] p-5 shadow-xl mb-4 border border-white overflow-hidden"><div class="flex flex-col items-center pt-1"><div class="relative w-40 h-40 rounded-full bg-gradient-to-br ${uv.from} ${uv.to} shadow-[0_15px_30px_-10px_rgba(255,100,50,0.3)] flex items-center justify-center mb-3"><div class="text-center text-black z-10"><span class="text-5xl font-bold">${d.currentUV}</span></div></div><div class="text-center mb-4"><span class="text-gray-400 text-[10px] font-bold tracking-[0.2em] uppercase">ÍNDICE UV ACTUAL</span><div class="text-xl font-bold mt-0.5 ${uv.textCol}">${uv.label}</div></div><div class="w-full bg-gray-50 rounded-xl p-3 border border-gray-100"><div class="flex justify-between text-[10px] font-medium mb-1.5"><span class="text-gray-400">Exposición</span><span class="text-gray-600">${d.exposureTime} / 60 min</span></div><div class="h-2 w-full bg-gray-200/70 rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r ${uv.from} ${uv.to}" style="width:${exposurePercentage}%"></div></div></div></div></div>
@@ -595,3 +599,4 @@ function render() {
 state.users = loadUsers();
 ensureDefaultDemoUser();
 render();
+
