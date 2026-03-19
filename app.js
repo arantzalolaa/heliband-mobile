@@ -659,16 +659,22 @@ function calendarPopover() {
       ? 'bg-yellow-100 text-yellow-700'
       : 'bg-green-100 text-green-700';
 
+  const dk = state.darkMode;
+  const popBg   = dk ? 'bg-gray-800 border-gray-600' : 'bg-white border-orange-100';
+  const titleCol = dk ? 'text-gray-100' : 'text-gray-800';
+  const textCol  = dk ? 'text-gray-300' : 'text-gray-600';
+  const closeCol = dk ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600';
+
   return `
     <div id="popover-dismiss" class="fixed inset-0 z-[160]"></div>
-    <div class="fixed z-[161] bg-white rounded-2xl shadow-2xl border border-orange-100 p-4"
+    <div class="fixed z-[161] rounded-2xl shadow-2xl border p-4 ${popBg}"
       style="top:${top}px; left:${left}px; width:${popW}px;">
       <div class="flex items-center justify-between mb-2">
-        <p class="text-sm font-bold text-gray-800">Día ${data.day}</p>
-        <button id="calendar-popover-close" class="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
+        <p class="text-sm font-bold ${titleCol}">Día ${data.day}</p>
+        <button id="calendar-popover-close" class="${closeCol} text-lg leading-none">✕</button>
       </div>
-      <p class="text-xs text-gray-600">Exposición: <strong>${data.minutes} min</strong></p>
-      <p class="text-xs text-gray-600 mt-1">UV máx: <strong>${data.uv}</strong></p>
+      <p class="text-xs ${textCol}">Exposición: <strong>${data.minutes} min</strong></p>
+      <p class="text-xs ${textCol} mt-1">UV máx: <strong>${data.uv}</strong></p>
       <p class="mt-2"><span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${chipClass}">${data.level}</span></p>
     </div>`;
 }
@@ -676,17 +682,24 @@ function calendarPopover() {
 function modalView() {
   if (state.ui.modal === 'calendar') {
     const model = buildCalendarEntries(state.ui.calendarOffset);
+    const dk = state.darkMode;
+    const modalBg  = dk ? 'bg-gray-900'  : 'bg-white';
+    const btnBg    = dk ? 'bg-gray-700'  : 'bg-gray-100';
+    const btnText  = dk ? 'text-gray-100': 'text-gray-600';
+    const labelCol = dk ? 'text-gray-400': 'text-gray-400';
+    const titleCol = dk ? 'text-gray-100': 'text-gray-800';
+    const footerCol= dk ? 'text-gray-500': 'text-gray-400';
     return `<div id="modal-backdrop" class="fixed inset-0 z-[140] bg-black/50 flex items-end">
-      <div class="w-full max-w-[430px] mx-auto bg-white rounded-t-3xl p-5 relative">
+      <div class="w-full max-w-[430px] mx-auto ${modalBg} rounded-t-3xl p-5 relative">
         <div class="flex justify-between items-center mb-3">
-          <button id="calendar-prev" class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center">‹</button>
-          <h3 class="font-bold text-lg capitalize text-center">${model.monthLabel}</h3>
+          <button id="calendar-prev" class="w-8 h-8 rounded-full ${btnBg} ${btnText} flex items-center justify-center text-lg font-bold">‹</button>
+          <h3 class="font-bold text-lg capitalize text-center ${titleCol}">${model.monthLabel}</h3>
           <div class="flex gap-2">
-            <button id="calendar-next" class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center">›</button>
-            <button id="close-modal" class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center font-bold">✕</button>
+            <button id="calendar-next" class="w-8 h-8 rounded-full ${btnBg} ${btnText} flex items-center justify-center text-lg font-bold">›</button>
+            <button id="close-modal" class="w-8 h-8 rounded-full ${btnBg} ${btnText} flex items-center justify-center font-bold">✕</button>
           </div>
         </div>
-        <div class="grid grid-cols-7 gap-1.5 text-center text-[11px] text-gray-400 mb-2">
+        <div class="grid grid-cols-7 gap-1.5 text-center text-[11px] ${labelCol} mb-2">
           <span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span>
         </div>
         <div class="grid grid-cols-7 gap-1.5 text-center text-xs">
@@ -695,10 +708,10 @@ function modalView() {
             `<button data-calendar-day="${x.day}" data-calendar-month="${x.month}" data-calendar-year="${x.year}"
               data-calendar-minutes="${x.minutes}" data-calendar-uv="${x.uv}"
               data-calendar-level="${x.exposure.level}" data-calendar-source="${x.sourceDay}"
-              class="py-2 rounded-lg border ${x.exposure.dayBg} active:scale-95 transition-transform">${x.day}</button>`
+              class="py-2 rounded-lg border ${x.exposure.dayBg} active:scale-95 transition-transform font-medium">${x.day}</button>`
           ).join('')}
         </div>
-        <p class="text-[11px] text-gray-400 mt-3 text-center">Verde = segura · Amarillo = media · Rojo = alta</p>
+        <p class="text-[11px] ${footerCol} mt-3 text-center">Verde = segura · Amarillo = media · Rojo = alta</p>
       </div>
     </div>
     ${state.ui.modalData ? calendarPopover() : ''}`;
