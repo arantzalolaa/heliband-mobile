@@ -66,8 +66,6 @@ select:focus-visible {
 .animate-fade-in { animation: fade-in 0.3s ease-out; }
 .animate-scan { animation: scan 2s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
 
-
-/* Make scroll feel native-app: allow scrolling, hide scrollbar visuals */
 * {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -81,4 +79,55 @@ select:focus-visible {
 
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Modo oscuro */
+body.dark {
+  background-color: #121212;
+  color: #e5e5e5;
+}
+
+body.dark .bg-white,
+body.dark .bg-\[\#FFFBF2\],
+body.dark .bg-gray-50,
+body.dark .bg-orange-50,
+body.dark .bg-yellow-50,
+body.dark .bg-green-50,
+body.dark .bg-red-50,
+body.dark .bg-purple-50 {
+  background-color: #1e1e1e !important;
+}
+
+body.dark .text-gray-800,
+body.dark .text-gray-700,
+body.dark .text-gray-600 {
+  color: #f0f0f0 !important;
+}
+
+body.dark .text-gray-500,
+body.dark .text-gray-400 {
+  color: #a0a0a0 !important;
+}
+
+body.dark .border-gray-100,
+body.dark .border-orange-100,
+body.dark .border-red-100,
+body.dark .border-yellow-100,
+body.dark .border-green-100 {
+  border-color: #333 !important;
+}
+
+body.dark .shadow-xl,
+body.dark .shadow-lg,
+body.dark .shadow {
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5) !important;
+}
+
+body.dark button.bg-white {
+  background-color: #2a2a2a !important;
+  border-color: #444 !important;
+}
+
+body.dark .bg-gradient-to-b {
+  background: #1a1a1a !important;
 }
