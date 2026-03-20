@@ -81,76 +81,205 @@ select:focus-visible {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Modo oscuro */
+/* ========== MODO OSCURO (MEJORADO) ========== */
 body.dark {
   background-color: #121212;
   color: #e5e5e5;
 }
 
-body.dark .bg-white,
-body.dark .bg-\[\#FFFBF2\],
+/* Fondo general de todas las pantallas */
+body.dark .screen-shell,
+body.dark .bg-\[\#FFFBF2\] {
+  background: #121212 !important;
+}
+
+/* Gradientes de fondo: reemplazar con fondo oscuro sólido */
+body.dark .bg-gradient-to-b,
+body.dark .bg-gradient-to-br {
+  background: #121212 !important;
+}
+
+/* Fondos semitransparentes (los más usados en cards, inputs, etc.) */
+body.dark .bg-white\/80,
+body.dark .bg-white\/85,
+body.dark .bg-white\/90,
+body.dark .bg-white\/95 {
+  background-color: rgba(30, 30, 30, 0.85) !important;
+}
+body.dark .bg-white\/70 {
+  background-color: rgba(30, 30, 30, 0.7) !important;
+}
+body.dark .bg-white {
+  background-color: #1e1e1e !important;
+}
 body.dark .bg-gray-50,
+body.dark .bg-gray-100 {
+  background-color: #2a2a2a !important;
+}
 body.dark .bg-orange-50,
 body.dark .bg-yellow-50,
 body.dark .bg-green-50,
 body.dark .bg-red-50,
 body.dark .bg-purple-50 {
-  background-color: #1e1e1e !important;
+  background-color: #2a2a2a !important;
+}
+body.dark .bg-orange-100 {
+  background-color: #3a2a1a !important;
+}
+body.dark .bg-gray-900 {
+  background-color: #0a0a0a !important;
 }
 
+/* Textos */
 body.dark .text-gray-800,
 body.dark .text-gray-700,
 body.dark .text-gray-600 {
   color: #f0f0f0 !important;
 }
-
 body.dark .text-gray-500,
 body.dark .text-gray-400 {
   color: #a0a0a0 !important;
 }
+body.dark .text-orange-600,
+body.dark .text-orange-500 {
+  color: #f97316 !important;  /* naranja vibrante */
+}
+body.dark .text-white {
+  color: #f0f0f0 !important;
+}
+body.dark .text-black {
+  color: #f0f0f0 !important;
+}
+body.dark .text-red-600 {
+  color: #ff6b6b !important;
+}
 
+/* Bordes */
 body.dark .border-gray-100,
 body.dark .border-orange-100,
 body.dark .border-red-100,
 body.dark .border-yellow-100,
-body.dark .border-green-100 {
+body.dark .border-green-100,
+body.dark .border-white,
+body.dark .border-white\/70,
+body.dark .border-white\/80,
+body.dark .border-gray-200 {
   border-color: #333 !important;
 }
+body.dark .border-orange-200 {
+  border-color: #f97316 !important;
+}
+body.dark .border-white\/50 {
+  border-color: rgba(255,255,255,0.1) !important;
+}
+body.dark .border-red-100 {
+  border-color: #4a1a1a !important;
+}
 
+/* Sombras */
 body.dark .shadow-xl,
 body.dark .shadow-lg,
 body.dark .shadow {
   box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5) !important;
 }
+body.dark .shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.4) !important;
+}
 
+/* Botones y elementos interactivos */
 body.dark button.bg-white {
   background-color: #2a2a2a !important;
   border-color: #444 !important;
 }
-
-body.dark .bg-gradient-to-b {
-  background: #1a1a1a !important;
+body.dark button.bg-orange-500 {
+  background-color: #f97316 !important;
+  color: #fff !important;
+}
+body.dark button.bg-gray-100 {
+  background-color: #333 !important;
+}
+body.dark .bg-gradient-to-r.from-\[\#FF6B4A\].to-\[\#FF4D4D\] {
+  background: linear-gradient(to right, #f97316, #ea580c) !important;
 }
 
-html {
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
+/* Botones específicos del aviso de pulsera */
+body.dark button.bg-gray-900 {
+  background-color: #1a1a1a !important;
+  color: #f0f0f0 !important;
+}
+body.dark button.bg-white.text-red-600 {
+  background-color: #2a2a2a !important;
+  color: #ff6b6b !important;
+  border: 1px solid #ff6b6b !important;
 }
 
-body {
-  touch-action: manipulation;
+/* Nav inferior y modales */
+body.dark .bg-\[\#FFEDE1\] {
+  background-color: #2a2a2a !important;
+}
+body.dark .bg-\[\#FFEDE1\] i {
+  color: #f97316 !important;
+}
+body.dark .fixed.bottom-5 .bg-white {
+  background-color: #1e1e1e !important;
+  border-color: #333 !important;
+}
+body.dark .fixed.bottom-5 .bg-\[\#FFEDE1\] {
+  background-color: #2a2a2a !important;
+}
+body.dark .fixed.bottom-5 button.text-gray-400 {
+  color: #aaa !important;
+}
+body.dark .fixed.bottom-5 button.text-orange-600 {
+  color: #f97316 !important;
 }
 
-.dashboard-scroll {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
+/* Modales */
+body.dark .bg-white.rounded-t-3xl,
+body.dark .bg-white.rounded-3xl,
+body.dark .bg-white.rounded-2xl {
+  background-color: #1e1e1e !important;
+  border-color: #333 !important;
+}
+body.dark .bg-black\/50 {
+  background-color: rgba(0, 0, 0, 0.7) !important;
 }
 
-@media (max-width: 360px) {
-  html,
-  body {
-    font-size: 16px;
-  }
+/* Inputs, selects, etc. */
+body.dark input,
+body.dark select,
+body.dark textarea {
+  background-color: #2a2a2a !important;
+  border-color: #444 !important;
+  color: #f0f0f0 !important;
+}
+body.dark input::placeholder,
+body.dark textarea::placeholder {
+  color: #888 !important;
+}
+body.dark select option {
+  background-color: #1e1e1e !important;
+  color: #f0f0f0 !important;
+}
 
-  .logo-size { width: 188px; height: 188px; }
+/* Cámara y escáner */
+body.dark .fixed.inset-0.bg-black {
+  background-color: #000 !important;
+}
+body.dark .border-orange-400 {
+  border-color: #f97316 !important;
+}
+
+/* Ajustes adicionales para la gráfica y popover */
+body.dark .bg-\[\#FFFBF2\] .dashboard-scroll {
+  background-color: #121212 !important;
+}
+body.dark .text-\[\#FF5E62\] {
+  color: #ff6b4a !important;
+}
+body.dark .bg-\[\#FF5E62\] {
+  background-color: #ff6b4a !important;
+}
+body.dark .bg-gradient-to-r.from-orange-400.to-\[\#FF5E62\] {
+  background: linear-gradient(to right, #f97316, #ff6b4a) !important;
 }
