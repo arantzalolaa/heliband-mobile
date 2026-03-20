@@ -176,9 +176,6 @@ function getSunscreenStatus() {
       expired: true,
       coverageProgress: 0,
       coverageCaption: 'Aún no hay una aplicación registrada.',
-      countdown: '--:--',
-      expired: true,
-      progress: 100,
       nextAtLabel: 'Pendiente',
       cardTone: 'bg-red-50 border-red-100',
       chipTone: 'bg-red-100 text-red-700',
@@ -195,10 +192,6 @@ function getSunscreenStatus() {
   const seconds = String(totalSeconds % 60).padStart(2, '0');
   const elapsedRatio = Math.min(1, Math.max(0, (now - appliedAt.getTime()) / intervalMs));
   const coverageProgress = Math.max(0, Math.min(100, (1 - elapsedRatio) * 100));
-  const totalMinutes = Math.ceil(absMs / 60000);
-  const hours = String(Math.floor(totalMinutes / 60)).padStart(2, '0');
-  const minutes = String(totalMinutes % 60).padStart(2, '0');
-  const progress = Math.min(100, Math.max(0, ((now - appliedAt.getTime()) / intervalMs) * 100));
 
   if (expired) {
     return {
@@ -208,9 +201,6 @@ function getSunscreenStatus() {
       expired: true,
       coverageProgress: 0,
       coverageCaption: 'La protección estimada terminó.',
-      countdown: '00:00',
-      expired: true,
-      progress: 100,
       nextAtLabel: 'Ahora',
       cardTone: 'bg-red-50 border-red-100',
       chipTone: 'bg-red-100 text-red-700',
@@ -226,12 +216,6 @@ function getSunscreenStatus() {
     expired: false,
     coverageProgress,
     coverageCaption: justApplied ? 'Protección recién iniciada.' : `${Math.round(coverageProgress)}% estimado restante del ciclo.`,
-  return {
-    label: under30 ? 'Protección por vencer' : 'Protección activa',
-    detail: under30 ? 'Prepárate para reaplicar protector solar pronto.' : 'Tu protección sigue vigente.',
-    countdown: `${hours}:${minutes}`,
-    expired: false,
-    progress,
     nextAtLabel: formatTime(new Date(nextAt)),
     cardTone: under30 ? 'bg-yellow-50 border-yellow-100' : 'bg-green-50 border-green-100',
     chipTone: under30 ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700',
@@ -502,10 +486,6 @@ function homeContent() {
         </div>
         <div class="w-px self-stretch bg-orange-100"></div>
         <p id="dashboard-date" class="text-[11px] text-gray-500 font-medium">${d.displayDate}</p>
-          <p class="text-sm font-bold text-gray-800">${d.displayTime}</p>
-        </div>
-        <div class="w-px self-stretch bg-orange-100"></div>
-        <p class="text-[11px] text-gray-500 font-medium">${d.displayDate}</p>
       </div>
     </div>
     ${d.showRecommendation ? `<div class="mb-4 animate-slide-down">
@@ -553,15 +533,6 @@ function homeContent() {
         </div>
       </div>
       ${isPendingBandConfirmation ? `<div class="bg-white/85 rounded-2xl p-3 border border-orange-100 mb-3">
-      <div class="flex items-start justify-between gap-3 mb-4">
-        <div>
-          <p class="text-[10px] font-bold text-gray-500 uppercase tracking-[0.18em]">Protección solar</p>
-          <h2 class="text-lg sm:text-xl font-bold text-gray-800 mt-1">${sunscreen.label}</h2>
-          <p class="text-xs text-gray-600 mt-1">${sunscreen.detail}</p>
-        </div>
-        <span class="${sunscreen.chipTone} text-[10px] font-bold px-3 py-1 rounded-full whitespace-nowrap">${d.sunscreen.confidence}</span>
-      </div>
-      ${isPendingBandConfirmation ? `<div class="bg-white/85 rounded-2xl p-3 border border-orange-100 mb-4">
         <div class="flex items-start gap-3">
           <div class="bg-orange-100 text-orange-600 p-2 rounded-full"><i data-lucide="watch"></i></div>
           <div class="flex-1">
@@ -575,7 +546,6 @@ function homeContent() {
         </div>
       </div>` : ''}
       <div class="grid grid-cols-2 gap-3 mb-3">
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
         <div class="bg-white/80 rounded-2xl p-3 border border-white/70">
           <p class="text-[10px] text-gray-400 font-bold uppercase">Última aplicación</p>
           <p class="text-sm font-semibold text-gray-800 mt-1">${sunscreenAppliedLabel}</p>
@@ -600,25 +570,6 @@ function homeContent() {
       <button id="apply-sunscreen" class="w-full bg-gradient-to-r from-[#FF6B4A] to-[#FF4D4D] text-white py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2">
         <i data-lucide="shield-check"></i><span>Ya me apliqué protector</span>
       </button>
-          <p class="text-2xl font-bold text-gray-800 mt-1">${sunscreen.countdown}</p>
-          <p class="text-[11px] text-gray-500 mt-1">Siguiente aviso: ${sunscreen.nextAtLabel}</p>
-        </div>
-        <div class="bg-white/80 rounded-2xl p-3 border border-white/70">
-          <p class="text-[10px] text-gray-400 font-bold uppercase">Cobertura estimada</p>
-          <div class="h-2.5 w-full bg-white rounded-full overflow-hidden mt-3">
-            <div class="h-full bg-gradient-to-r from-orange-400 to-[#FF5E62]" style="width:${sunscreen.progress}%"></div>
-          </div>
-          <p class="text-[11px] text-gray-500 mt-2">Ciclo de ${d.sunscreen.reapplyEveryMinutes} min.</p>
-        </div>
-      </div>
-      <div class="flex flex-col sm:flex-row gap-3">
-        <button id="apply-sunscreen" class="flex-1 bg-gradient-to-r from-[#FF6B4A] to-[#FF4D4D] text-white py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2">
-          <i data-lucide="shield-check"></i><span>Ya me apliqué protector</span>
-        </button>
-        <button id="sunscreen-help" class="sm:w-auto bg-white/90 text-gray-700 py-3.5 px-4 rounded-2xl font-semibold text-sm border border-white/80 flex items-center justify-center gap-2">
-          <i data-lucide="badge-alert"></i><span>Evitar falsos positivos</span>
-        </button>
-      </div>
     </div>
     ${d.lastRecommendation ? `<div class="bg-white rounded-2xl p-4 shadow-lg border border-orange-100 mb-4">
       <div class="flex items-start justify-between mb-1">
@@ -1121,16 +1072,12 @@ function dashboardView() {
   return wrapScreen('bg-[#FFFBF2]', `
     <div class="dashboard-scroll h-dvh overflow-y-auto hide-scroll pt-0 overscroll-contain">${content}</div>
     ${hideBottomNav ? '' : `<div class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)]">
-  return wrapScreen('bg-[#FFFBF2]', `
-    <div class="dashboard-scroll h-dvh overflow-y-auto hide-scroll pt-0 overscroll-contain">${content}</div>
-    <div class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)]">
       <div class="bg-white px-2 py-3 rounded-3xl border border-gray-50 flex justify-around items-center shadow-[0_10px_30px_-5px_rgba(0,0,0,0.1)]">
         <button data-view="home" class="w-12 h-12 ${view === 'home' ? 'bg-[#FFEDE1] text-orange-600' : 'text-gray-400'} rounded-2xl flex items-center justify-center"><i data-lucide="home"></i></button>
         <button data-view="history" class="w-12 h-12 ${view === 'history' ? 'bg-[#FFEDE1] text-orange-600' : 'text-gray-400'} rounded-2xl flex items-center justify-center"><i data-lucide="clock"></i></button>
         <button data-view="profile" class="w-12 h-12 ${view === 'profile' ? 'bg-[#FFEDE1] text-orange-600' : 'text-gray-400'} rounded-2xl flex items-center justify-center"><i data-lucide="user"></i></button>
       </div>
     </div>`}
-    </div>
     ${modalView()}`);
 }
 
@@ -1348,17 +1295,14 @@ function bind() {
     registerSunscreenApplication('App');
     confirmSunscreenApplication();
     render();
-    showToast('Protector registrado manualmente');
   });
   document.getElementById('confirm-band-sunscreen')?.addEventListener('click', () => {
     confirmSunscreenApplication();
     render();
-    showToast('Aplicación confirmada');
   });
   document.getElementById('undo-band-sunscreen')?.addEventListener('click', () => {
     undoSunscreenApplication();
     render();
-    showToast('Registro corregido');
   });
   document.getElementById('sunscreen-help')?.addEventListener('click', () => { state.ui.modal = 'sunscreen'; render(); });
 
@@ -1598,8 +1542,3 @@ clearInterval(uiRefreshTimer);
 uiRefreshTimer = setInterval(() => {
   refreshLiveDashboardUI();
 }, 1000);
-  if (!state.isLoggedIn) return;
-  state.dashboard.displayTime = formatTime();
-  state.dashboard.displayDate = formatDate();
-  if (state.dashboard.currentView === 'home') render();
-}, 60000);
