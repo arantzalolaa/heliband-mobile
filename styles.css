@@ -81,6 +81,29 @@ select:focus-visible {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* ========== AJUSTES DE LAYOUT ========== */
+/* Mejora el espaciado superior en la pantalla de login */
+.screen-shell > .min-h-dvh > div:first-child {
+  padding-top: 2rem; /* Espacio superior para el logo */
+}
+
+/* Asegura que el contenido de login sea desplazable incluso con teclado */
+.screen-shell .overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Ajuste de padding inferior para el contenido del dashboard, considerando la barra de navegación fija */
+.dashboard-scroll {
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom)); /* 4rem ≈ 64px, altura aprox de la barra inferior */
+}
+
+/* Cuando la cámara está abierta, el padding extra no es necesario (la barra inferior está oculta) */
+.dashboard-scroll:has(+ .fixed.bottom-5) {
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+}
+
 /* ========== MODO OSCURO (MEJORADO) ========== */
 body.dark {
   background-color: #121212;
@@ -283,3 +306,19 @@ body.dark .bg-\[\#FF5E62\] {
 body.dark .bg-gradient-to-r.from-orange-400.to-\[\#FF5E62\] {
   background: linear-gradient(to right, #f97316, #ff6b4a) !important;
 }
+
+/* ========== CORRECCIÓN DEL ÁREA DE SEGURIDAD INFERIOR ========== */
+/* Asegura que el fondo cubra también la zona del home indicator */
+body.dark,
+body.dark #app,
+body.dark .screen-shell {
+  background-color: #121212 !important;
+}
+
+/* En modo claro, la barra inferior debe mantener el color de fondo claro */
+body:not(.dark) #app,
+body:not(.dark) .screen-shell {
+  background-color: #FFFBF2;
+}
+
+/* El padding-bottom adicional para el dashboard-scroll ya está definido arriba */
