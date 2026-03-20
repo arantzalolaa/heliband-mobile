@@ -21,6 +21,15 @@ const state = {
     showRecommendation: true,
     lastRecommendation: null,
     isConnected: true,
+    sunscreen: {
+      appliedAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
+      reapplyEveryMinutes: 120,
+      source: 'Pulsera',
+      confidence: 'Por confirmar',
+      previousAppliedAt: null,
+      previousSource: '',
+      previousConfidence: '',
+    },
     recommendations: [
       { id: 1, uv: 6.2, message: 'Usa sombrero y busca sombra.', timestamp: '10 Feb, 09:30', level: 'Moderado' },
       { id: 2, uv: 4.5, message: 'Nivel seguro. Disfruta el exterior.', timestamp: '9 Feb, 14:15', level: 'Bajo' },
@@ -69,6 +78,8 @@ let toastTimer;
 let toastEl;
 let cameraStream;
 let cameraPermissionError = false;
+let uiRefreshTimer;
+const dashboardScrollPositions = { home: 0, history: 0, profile: 0 };
 
 function loadUsers() {
   try {
@@ -142,6 +153,148 @@ const formatTime = (d = new Date()) =>
 const formatDate = (d = new Date()) =>
   d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 
+const formatDateTime = (value) => {
+  const d = value ? new Date(value) : new Date();
+  return d.toLocaleString('es-ES', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+};
+
+function getSunscreenStatus() {
+  const sunscreen = state.dashboard.sunscreen;
+  const intervalMs = sunscreen.reapplyEveryMinutes * 60 * 1000;
+  const appliedAt = sunscreen.appliedAt ? new Date(sunscreen.appliedAt) : null;
+  if (!appliedAt || Number.isNaN(appliedAt.getTime())) {
+    return {
+      label: 'Sin registro',
+      detail: 'Registra una aplicación para activar el recordatorio.',
+      countdown: '--:--:--',
+      expired: true,
+      coverageProgress: 0,
+      coverageCaption: 'Aún no hay una aplicación registrada.',
+      nextAtLabel: 'Pendiente',
+      cardTone: 'bg-red-50 border-red-100',
+      chipTone: 'bg-red-100 text-red-700',
+    };
+  }
+  const now = Date.now();
+  const nextAt = appliedAt.getTime() + intervalMs;
+  const remainingMs = nextAt - now;
+  const expired = remainingMs <= 0;
+  const absMs = Math.max(0, remainingMs);
+  const totalSeconds = Math.ceil(absMs / 1000);
+  const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+  const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+  const seconds = String(totalSeconds % 60).padStart(2, '0');
+  const elapsedRatio = Math.min(1, Math.max(0, (now - appliedAt.getTime()) / intervalMs));
+  const coverageProgress = Math.max(0, Math.min(100, (1 - elapsedRatio) * 100));
+
+  if (expired) {
+    return {
+      label: 'Reaplicar ahora',
+      detail: 'Tu ventana de protección estimada ya terminó.',
+      countdown: '00:00:00',
+      expired: true,
+      coverageProgress: 0,
+      coverageCaption: 'La protección estimada terminó.',
+      nextAtLabel: 'Ahora',
+      cardTone: 'bg-red-50 border-red-100',
+      chipTone: 'bg-red-100 text-red-700',
+    };
+  }
+
+  const under30 = absMs <= 30 * 60 * 1000;
+  const justApplied = elapsedRatio <= 0.05;
+  return {
+    label: under30 ? 'Protección por vencer' : 'Protección activa',
+    detail: under30 ? 'Prepárate para reaplicar protector solar pronto.' : 'Tu protección sigue vigente.',
+    countdown: `${hours}:${minutes}:${seconds}`,
+    expired: false,
+    coverageProgress,
+    coverageCaption: justApplied ? 'Protección recién iniciada.' : `${Math.round(coverageProgress)}% estimado restante del ciclo.`,
+    nextAtLabel: formatTime(new Date(nextAt)),
+    cardTone: under30 ? 'bg-yellow-50 border-yellow-100' : 'bg-green-50 border-green-100',
+    chipTone: under30 ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700',
+  };
+}
+
+function snapshotSunscreenState() {
+  const sunscreen = state.dashboard.sunscreen;
+  sunscreen.previousAppliedAt = sunscreen.appliedAt;
+  sunscreen.previousSource = sunscreen.source;
+  sunscreen.previousConfidence = sunscreen.confidence;
+}
+
+function registerSunscreenApplication(source = 'App') {
+  const sunscreen = state.dashboard.sunscreen;
+  snapshotSunscreenState();
+  sunscreen.appliedAt = new Date().toISOString();
+  sunscreen.source = source;
+  sunscreen.confidence = source === 'Pulsera' ? 'Por confirmar' : 'Manual';
+}
+
+function confirmSunscreenApplication() {
+  state.dashboard.sunscreen.confidence = 'Confirmado';
+}
+
+function undoSunscreenApplication() {
+  const sunscreen = state.dashboard.sunscreen;
+  sunscreen.appliedAt = sunscreen.previousAppliedAt;
+  sunscreen.source = sunscreen.previousSource || 'Sin registro';
+  sunscreen.confidence = sunscreen.previousConfidence || 'Sin registro';
+  sunscreen.previousAppliedAt = null;
+  sunscreen.previousSource = '';
+  sunscreen.previousConfidence = '';
+}
+
+
+function captureDashboardScrollPosition() {
+  const scroller = document.querySelector('.dashboard-scroll');
+  if (!scroller || !state.isLoggedIn) return;
+  dashboardScrollPositions[state.dashboard.currentView] = scroller.scrollTop;
+}
+
+function restoreDashboardScrollPosition() {
+  const scroller = document.querySelector('.dashboard-scroll');
+  if (!scroller || !state.isLoggedIn) return;
+  const target = dashboardScrollPositions[state.dashboard.currentView] || 0;
+  requestAnimationFrame(() => {
+    scroller.scrollTop = target;
+  });
+}
+
+function refreshLiveDashboardUI() {
+  state.dashboard.displayTime = formatTime();
+  state.dashboard.displayDate = formatDate();
+
+  const timeEl = document.getElementById('dashboard-time');
+  const dateEl = document.getElementById('dashboard-date');
+  if (timeEl) timeEl.textContent = state.dashboard.displayTime;
+  if (dateEl) dateEl.textContent = state.dashboard.displayDate;
+
+  if (!state.isLoggedIn || state.dashboard.currentView !== 'home') return;
+  const sunscreen = getSunscreenStatus();
+  const countdownEl = document.getElementById('sunscreen-countdown');
+  const nextAtEl = document.getElementById('sunscreen-next-at');
+  const coverageBarEl = document.getElementById('sunscreen-coverage-bar');
+  const coverageCaptionEl = document.getElementById('sunscreen-coverage-caption');
+  const coveragePercentEl = document.getElementById('sunscreen-coverage-percent');
+  const statusLabelEl = document.getElementById('sunscreen-status-label');
+  const statusDetailEl = document.getElementById('sunscreen-status-detail');
+
+  if (countdownEl) countdownEl.textContent = sunscreen.countdown;
+  if (nextAtEl) nextAtEl.textContent = `Siguiente aviso: ${sunscreen.nextAtLabel}`;
+  if (coverageBarEl) coverageBarEl.style.width = `${sunscreen.coverageProgress}%`;
+  if (coverageCaptionEl) coverageCaptionEl.textContent = sunscreen.coverageCaption;
+  if (coveragePercentEl) coveragePercentEl.textContent = `${Math.round(sunscreen.coverageProgress)}%`;
+  if (statusLabelEl) statusLabelEl.textContent = sunscreen.label;
+  if (statusDetailEl) statusDetailEl.textContent = sunscreen.detail;
+}
+
 function ensureToastEl() {
   if (toastEl) return toastEl;
   toastEl = document.createElement('div');
@@ -213,8 +366,9 @@ function wrapScreen(gradient, content) {
 function loginView() {
   const canSubmit = state.loginUser.trim() && state.loginPass.trim();
   return wrapScreen('bg-gradient-to-b from-[#FFE8B6] via-[#FFF5E1] to-white', `
-    <div class="min-h-dvh flex flex-col items-center justify-center px-8 pt-12 pb-10 w-full">
-      <div class="flex flex-col items-center mb-12 animate-fade-in">
+    <div class="min-h-dvh overflow-y-auto hide-scroll">
+      <div class="min-h-dvh w-full max-w-screen-sm mx-auto flex flex-col items-center justify-center px-6 sm:px-8 py-10 sm:py-12">
+      <div class="flex flex-col items-center mb-10 sm:mb-12 animate-fade-in">
         <div class="relative mb-6 filter drop-shadow-xl">
           <img src="${logo}" alt="Heli-Band Logo" class="logo-size object-contain" />
         </div>
@@ -246,6 +400,7 @@ function loginView() {
         <button id="forgot-btn" class="text-sm font-medium text-gray-500">¿Olvidaste tu contraseña?</button>
         <button id="create-btn" class="text-sm font-bold text-orange-500">Crear una cuenta</button>
       </div>
+      </div>
     </div>`);
 }
 
@@ -271,15 +426,18 @@ function forgotView() {
     </div>`,
   };
   return wrapScreen('bg-gradient-to-b from-[#FFF8E7] via-[#FFE4C4] to-[#FFF8F0]',
-    `<div class="min-h-dvh flex flex-col px-8 pt-16 w-full relative">
+    `<div class="min-h-dvh overflow-y-auto hide-scroll">
+      <div class="min-h-dvh max-w-screen-sm mx-auto flex flex-col px-6 sm:px-8 pt-16 w-full relative">
       ${step !== 'success' ? '<button id="forgot-back" class="absolute top-16 left-6 p-2 text-2xl">←</button>' : ''}
       <div class="mt-20 flex justify-center">${blocks[step]}</div>
+      </div>
     </div>`);
 }
 
 function createView() {
   return wrapScreen('bg-gradient-to-b from-[#FFE8B6] via-[#FFF5E1] to-white',
-    `<div class="min-h-dvh flex flex-col px-8 pt-20 pb-10 w-full">
+    `<div class="min-h-dvh overflow-y-auto hide-scroll">
+      <div class="min-h-dvh max-w-screen-sm mx-auto flex flex-col px-6 sm:px-8 pt-20 pb-10 w-full">
       <button id="create-back" class="self-start mb-6 text-2xl">←</button>
       <form id="create-form" class="space-y-3">
         <h2 class="text-2xl font-bold text-center mb-2">Crear cuenta</h2>
@@ -304,22 +462,36 @@ function createView() {
 
         <button class="w-full bg-orange-500 text-white py-3 rounded-2xl font-bold mt-2">Crear cuenta</button>
       </form>
+      </div>
     </div>`);
 }
 
 function homeContent() {
   const d = state.dashboard;
   const uv = getUVStatus(d.currentUV);
-  const exposurePercentage = (d.exposureTime / 60) * 100;
-  return `<div class="px-6 pt-10 pb-safe animate-fade-in">
-    <div class="flex items-center justify-between mb-5 pt-4">
-      <div>
-        <div class="flex items-center gap-2"><i data-lucide="sun" class="text-orange-500"></i><h1 class="text-3xl font-bold">Inicio</h1></div>
-        <p class="text-xs text-gray-500">Hola, ${state.username || 'Usuario'}</p>
+  const exposurePercentage = Math.min(100, (d.exposureTime / 60) * 100);
+  const sunscreen = getSunscreenStatus();
+  const sunscreenAppliedLabel = d.sunscreen.appliedAt ? formatDateTime(d.sunscreen.appliedAt) : 'Sin registro';
+  const isPendingBandConfirmation = d.sunscreen.source === 'Pulsera' && d.sunscreen.confidence === 'Por confirmar';
+  return `<div class="w-full max-w-screen-sm mx-auto px-4 sm:px-6 pt-8 sm:pt-10 pb-32 animate-fade-in">
+    <div class="mb-5 pt-4">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-2"><i data-lucide="sun" class="text-orange-500"></i><h1 class="text-3xl font-bold">Inicio</h1></div>
+          <p class="text-xs text-gray-500">Hola, ${state.username || 'Usuario'}</p>
+        </div>
+        <div class="flex gap-2 shrink-0">
+          <button id="help-btn" class="p-2.5 rounded-xl bg-white border border-orange-100"><i data-lucide="help-circle" class="text-orange-500"></i></button>
+          <button id="refresh" class="p-2.5 rounded-xl bg-white border border-orange-100 ${d.isRefreshing ? 'animate-spin' : ''}"><i data-lucide="refresh-cw" class="text-orange-500"></i></button>
+        </div>
       </div>
-      <div class="flex gap-2">
-        <button id="help-btn" class="p-2.5 rounded-xl bg-white border border-orange-100"><i data-lucide="help-circle" class="text-orange-500"></i></button>
-        <button id="refresh" class="p-2.5 rounded-xl bg-white border border-orange-100 ${d.isRefreshing ? 'animate-spin' : ''}"><i data-lucide="refresh-cw" class="text-orange-500"></i></button>
+      <div class="mt-3 inline-flex items-center gap-3 bg-white/90 rounded-2xl border border-orange-100 px-3 py-2 shadow-sm">
+        <div>
+          <p class="text-[10px] text-gray-400 font-bold uppercase">Hoy</p>
+          <p id="dashboard-time" class="text-sm font-bold text-gray-800">${d.displayTime}</p>
+        </div>
+        <div class="w-px self-stretch bg-orange-100"></div>
+        <p id="dashboard-date" class="text-[11px] text-gray-500 font-medium">${d.displayDate}</p>
       </div>
     </div>
     ${d.showRecommendation ? `<div class="mb-4 animate-slide-down">
@@ -333,7 +505,7 @@ function homeContent() {
         <button id="close-rec">✕</button>
       </div>
     </div>` : ''}
-    <div class="bg-white rounded-[2rem] p-5 shadow-xl mb-4 border border-white overflow-hidden">
+    <div class="bg-white rounded-[2rem] p-4 sm:p-5 shadow-xl mb-4 border border-white overflow-hidden">
       <div class="flex flex-col items-center pt-1">
         <div class="relative w-40 h-40 rounded-full bg-gradient-to-br ${uv.from} ${uv.to} shadow-[0_15px_30px_-10px_rgba(255,100,50,0.3)] flex items-center justify-center mb-3">
           <div class="text-center text-black z-10"><span class="text-5xl font-bold">${d.currentUV}</span></div>
@@ -351,6 +523,59 @@ function homeContent() {
           </div>
         </div>
       </div>
+    </div>
+    <div class="${sunscreen.cardTone} rounded-[2rem] p-4 sm:p-5 shadow-lg mb-4 border">
+      <div class="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <p class="text-[10px] font-bold text-gray-500 uppercase tracking-[0.18em]">Protección solar</p>
+          <h2 id="sunscreen-status-label" class="text-lg sm:text-xl font-bold text-gray-800 mt-1">${sunscreen.label}</h2>
+          <p id="sunscreen-status-detail" class="text-xs text-gray-600 mt-1">${sunscreen.detail}</p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <span class="${sunscreen.chipTone} text-[10px] font-bold px-3 py-1 rounded-full whitespace-nowrap">${d.sunscreen.confidence}</span>
+          <button id="sunscreen-help" class="w-9 h-9 rounded-full bg-white/90 text-gray-700 border border-white/80 flex items-center justify-center" aria-label="Evitar falsos positivos">
+            <i data-lucide="help-circle"></i>
+          </button>
+        </div>
+      </div>
+      ${isPendingBandConfirmation ? `<div class="bg-white/85 rounded-2xl p-3 border border-orange-100 mb-3">
+        <div class="flex items-start gap-3">
+          <div class="bg-orange-100 text-orange-600 p-2 rounded-full"><i data-lucide="watch"></i></div>
+          <div class="flex-1">
+            <p class="text-xs font-bold text-gray-800">La pulsera reportó una aplicación</p>
+            <p class="text-[11px] text-gray-500 mt-1">Confírmala desde la app o márcala como error para no desajustar el cálculo de protección.</p>
+          </div>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-2 mt-3">
+          <button id="confirm-band-sunscreen" class="flex-1 bg-gray-900 text-white py-2.5 rounded-xl font-semibold text-sm">Confirmar aplicación</button>
+          <button id="undo-band-sunscreen" class="flex-1 bg-white text-red-600 py-2.5 rounded-xl font-semibold text-sm border border-red-100">Fue un error</button>
+        </div>
+      </div>` : ''}
+      <div class="grid grid-cols-2 gap-3 mb-3">
+        <div class="bg-white/80 rounded-2xl p-3 border border-white/70">
+          <p class="text-[10px] text-gray-400 font-bold uppercase">Última aplicación</p>
+          <p class="text-sm font-semibold text-gray-800 mt-1">${sunscreenAppliedLabel}</p>
+          <p class="text-[11px] text-gray-500 mt-1">Registrado desde ${d.sunscreen.source}</p>
+        </div>
+        <div class="bg-white/80 rounded-2xl p-3 border border-white/70">
+          <p class="text-[10px] text-gray-400 font-bold uppercase">Reaplicar en</p>
+          <p id="sunscreen-countdown" class="text-xl sm:text-2xl font-bold text-gray-800 mt-1 tabular-nums">${sunscreen.countdown}</p>
+          <p id="sunscreen-next-at" class="text-[11px] text-gray-500 mt-1">Siguiente aviso: ${sunscreen.nextAtLabel}</p>
+        </div>
+      </div>
+      <div class="bg-white/80 rounded-2xl p-3 border border-white/70 mb-3">
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <p class="text-[10px] text-gray-400 font-bold uppercase">Cobertura estimada</p>
+          <span id="sunscreen-coverage-percent" class="text-[10px] font-bold text-gray-500">${Math.round(sunscreen.coverageProgress)}%</span>
+        </div>
+        <div class="h-2.5 w-full bg-white rounded-full overflow-hidden mt-2">
+          <div id="sunscreen-coverage-bar" class="h-full bg-gradient-to-r from-orange-400 to-[#FF5E62]" style="width:${sunscreen.coverageProgress}%"></div>
+        </div>
+        <p id="sunscreen-coverage-caption" class="text-[11px] text-gray-500 mt-2">${sunscreen.coverageCaption}</p>
+      </div>
+      <button id="apply-sunscreen" class="w-full bg-gradient-to-r from-[#FF6B4A] to-[#FF4D4D] text-white py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2">
+        <i data-lucide="shield-check"></i><span>Ya me apliqué protector</span>
+      </button>
     </div>
     ${d.lastRecommendation ? `<div class="bg-white rounded-2xl p-4 shadow-lg border border-orange-100 mb-4">
       <div class="flex items-start justify-between mb-1">
@@ -423,7 +648,7 @@ function historyContent() {
     })
     .join('');
 
-  return `<div class="px-6 pt-10 pb-32 animate-fade-in">
+  return `<div class="w-full max-w-screen-sm mx-auto px-4 sm:px-6 pt-8 sm:pt-10 pb-32 animate-fade-in">
     <div class="flex items-center justify-between mb-5 pt-4">
       <div>
         <div class="flex items-center gap-2"><i data-lucide="clock" class="text-orange-500"></i><h1 class="text-3xl font-bold">Historial</h1></div>
@@ -500,7 +725,7 @@ function profileContent() {
         <div class="w-10"></div>
       </div>
       <video id="camera-feed" autoplay playsinline muted
-        class="absolute inset-0 w-full h-full object-cover ${cameraPermissionError ? 'hidden' : ''}"></video>
+        class="absolute inset-0 w-full h-full object-cover -scale-x-100 ${cameraPermissionError ? 'hidden' : ''}"></video>
       ${cameraPermissionError
         ? '<div class="absolute inset-0 flex items-center justify-center bg-gray-900 text-white/80 text-sm px-10 text-center">No se pudo abrir tu cámara. Puedes seguir usando la simulación.</div>'
         : ''}
@@ -526,7 +751,7 @@ function profileContent() {
       </div>
     </div>` : '';
 
-  return `<div class="px-6 pt-10 pb-32 animate-fade-in relative">
+  return `<div class="w-full max-w-screen-sm mx-auto px-4 sm:px-6 pt-8 sm:pt-10 pb-32 animate-fade-in relative">
     <div class="flex items-center justify-between mb-5 pt-4">
       <div>
         <div class="flex items-center gap-2"><i data-lucide="user" class="text-orange-500"></i><h1 class="text-3xl font-bold">Perfil</h1></div>
@@ -814,6 +1039,21 @@ function modalView() {
     </div>`;
   }
 
+  if (state.ui.modal === 'sunscreen') {
+    return `<div id="modal-backdrop" class="fixed inset-0 z-[140] bg-black/50 flex items-end sm:items-center sm:justify-center p-0 sm:p-6">
+      <div class="w-full max-w-[430px] mx-auto bg-white rounded-t-3xl sm:rounded-3xl p-5">
+        <div class="flex justify-between items-center mb-3"><h3 class="font-bold text-lg">Alternativas solo desde la app</h3><button id="close-modal">✕</button></div>
+        <ul class="list-disc pl-5 text-sm text-gray-600 space-y-2">
+          <li><strong>Confirmación doble:</strong> cuando la pulsera mande el evento, la app muestra un aviso de 10–15 segundos para confirmar o deshacer.</li>
+          <li><strong>Estado pendiente:</strong> marca la aplicación como “pendiente” hasta que el usuario abra la app o toque “confirmar”.</li>
+          <li><strong>Botón deshacer:</strong> agrega un acceso rápido “Fue un error” para cancelar la última aplicación registrada.</li>
+          <li><strong>Validación contextual:</strong> si el usuario pulsa dos veces muy seguido, o si el UV es bajo, la app puede pedir confirmación adicional.</li>
+          <li><strong>Historial editable:</strong> permite ver cuándo se registró la última aplicación y corregirla manualmente.</li>
+        </ul>
+      </div>
+    </div>`;
+  }
+
   if (state.ui.modal === 'risk') {
     const risk = ((state.dashboard.currentUV * 100) / state.profile.spf).toFixed(1);
     return `<div id="modal-backdrop" class="fixed inset-0 z-[140] bg-black/50 flex items-center justify-center p-6">
@@ -834,15 +1074,16 @@ function modalView() {
 function dashboardView() {
   const view = state.dashboard.currentView;
   const content = view === 'home' ? homeContent() : view === 'history' ? historyContent() : profileContent();
+  const hideBottomNav = view === 'profile' && state.profile.showCamera;
   return wrapScreen('bg-[#FFFBF2]', `
-    <div class="h-dvh overflow-y-auto hide-scroll pt-0">${content}</div>
-    <div class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)]">
+    <div class="dashboard-scroll h-dvh overflow-y-auto hide-scroll pt-0 overscroll-contain">${content}</div>
+    ${hideBottomNav ? '' : `<div class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)]">
       <div class="bg-white px-2 py-3 rounded-3xl border border-gray-50 flex justify-around items-center shadow-[0_10px_30px_-5px_rgba(0,0,0,0.1)]">
         <button data-view="home" class="w-12 h-12 ${view === 'home' ? 'bg-[#FFEDE1] text-orange-600' : 'text-gray-400'} rounded-2xl flex items-center justify-center"><i data-lucide="home"></i></button>
         <button data-view="history" class="w-12 h-12 ${view === 'history' ? 'bg-[#FFEDE1] text-orange-600' : 'text-gray-400'} rounded-2xl flex items-center justify-center"><i data-lucide="clock"></i></button>
         <button data-view="profile" class="w-12 h-12 ${view === 'profile' ? 'bg-[#FFEDE1] text-orange-600' : 'text-gray-400'} rounded-2xl flex items-center justify-center"><i data-lucide="user"></i></button>
       </div>
-    </div>
+    </div>`}
     ${modalView()}`);
 }
 
@@ -1006,6 +1247,10 @@ function bind() {
     showToast('Cuenta creada');
   });
 
+  document.querySelector('.dashboard-scroll')?.addEventListener('scroll', (e) => {
+    dashboardScrollPositions[state.dashboard.currentView] = e.currentTarget.scrollTop;
+  }, { passive: true });
+
   // ── Dashboard nav ──
   document.querySelectorAll('[data-view]').forEach((btn) =>
     btn.addEventListener('click', () => { state.dashboard.currentView = btn.dataset.view; render(); })
@@ -1052,6 +1297,20 @@ function bind() {
   });
   document.getElementById('calculate-risk')?.addEventListener('click', () => { state.ui.modal = 'risk'; render(); });
   document.getElementById('help-btn')?.addEventListener('click', () => { state.ui.modal = 'tutorial'; render(); });
+  document.getElementById('apply-sunscreen')?.addEventListener('click', () => {
+    registerSunscreenApplication('App');
+    confirmSunscreenApplication();
+    render();
+  });
+  document.getElementById('confirm-band-sunscreen')?.addEventListener('click', () => {
+    confirmSunscreenApplication();
+    render();
+  });
+  document.getElementById('undo-band-sunscreen')?.addEventListener('click', () => {
+    undoSunscreenApplication();
+    render();
+  });
+  document.getElementById('sunscreen-help')?.addEventListener('click', () => { state.ui.modal = 'sunscreen'; render(); });
 
   // ── History ──
   document.querySelectorAll('[data-bar]').forEach((el) =>
@@ -1268,6 +1527,7 @@ function bind() {
 }
 
 function render() {
+  captureDashboardScrollPosition();
   ensureToastEl();
   document.body.classList.toggle('dark', state.darkMode);
   if (state.isLoggedIn) app.innerHTML = dashboardView();
@@ -1275,8 +1535,16 @@ function render() {
   else if (state.authView === 'forgot-password') app.innerHTML = forgotView();
   else app.innerHTML = createView();
   bind();
+  restoreDashboardScrollPosition();
+  refreshLiveDashboardUI();
 }
 
 state.users = loadUsers();
 ensureDefaultDemoUser();
+state.dashboard.displayTime = formatTime();
+state.dashboard.displayDate = formatDate();
 render();
+clearInterval(uiRefreshTimer);
+uiRefreshTimer = setInterval(() => {
+  refreshLiveDashboardUI();
+}, 1000);

@@ -131,3 +131,26 @@ body.dark button.bg-white {
 body.dark .bg-gradient-to-b {
   background: #1a1a1a !important;
 }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  touch-action: manipulation;
+}
+
+.dashboard-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+@media (max-width: 360px) {
+  html,
+  body {
+    font-size: 16px;
+  }
+
+  .logo-size { width: 188px; height: 188px; }
+}
