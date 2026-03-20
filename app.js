@@ -366,8 +366,9 @@ function wrapScreen(gradient, content) {
 function loginView() {
   const canSubmit = state.loginUser.trim() && state.loginPass.trim();
   return wrapScreen('bg-gradient-to-b from-[#FFE8B6] via-[#FFF5E1] to-white', `
-    <div class="min-h-dvh flex flex-col items-center justify-center px-8 pt-12 pb-10 w-full">
-      <div class="flex flex-col items-center mb-12 animate-fade-in">
+    <div class="min-h-dvh overflow-y-auto hide-scroll">
+      <div class="min-h-dvh w-full max-w-screen-sm mx-auto flex flex-col items-center justify-start sm:justify-center px-6 sm:px-8 pt-10 sm:pt-12 pb-10">
+      <div class="flex flex-col items-center mb-10 sm:mb-12 animate-fade-in">
         <div class="relative mb-6 filter drop-shadow-xl">
           <img src="${logo}" alt="Heli-Band Logo" class="logo-size object-contain" />
         </div>
@@ -399,6 +400,7 @@ function loginView() {
         <button id="forgot-btn" class="text-sm font-medium text-gray-500">¿Olvidaste tu contraseña?</button>
         <button id="create-btn" class="text-sm font-bold text-orange-500">Crear una cuenta</button>
       </div>
+      </div>
     </div>`);
 }
 
@@ -424,15 +426,18 @@ function forgotView() {
     </div>`,
   };
   return wrapScreen('bg-gradient-to-b from-[#FFF8E7] via-[#FFE4C4] to-[#FFF8F0]',
-    `<div class="min-h-dvh flex flex-col px-8 pt-16 w-full relative">
+    `<div class="min-h-dvh overflow-y-auto hide-scroll">
+      <div class="min-h-dvh max-w-screen-sm mx-auto flex flex-col px-6 sm:px-8 pt-16 w-full relative">
       ${step !== 'success' ? '<button id="forgot-back" class="absolute top-16 left-6 p-2 text-2xl">←</button>' : ''}
       <div class="mt-20 flex justify-center">${blocks[step]}</div>
+      </div>
     </div>`);
 }
 
 function createView() {
   return wrapScreen('bg-gradient-to-b from-[#FFE8B6] via-[#FFF5E1] to-white',
-    `<div class="min-h-dvh flex flex-col px-8 pt-20 pb-10 w-full">
+    `<div class="min-h-dvh overflow-y-auto hide-scroll">
+      <div class="min-h-dvh max-w-screen-sm mx-auto flex flex-col px-6 sm:px-8 pt-20 pb-10 w-full">
       <button id="create-back" class="self-start mb-6 text-2xl">←</button>
       <form id="create-form" class="space-y-3">
         <h2 class="text-2xl font-bold text-center mb-2">Crear cuenta</h2>
@@ -457,6 +462,7 @@ function createView() {
 
         <button class="w-full bg-orange-500 text-white py-3 rounded-2xl font-bold mt-2">Crear cuenta</button>
       </form>
+      </div>
     </div>`);
 }
 
