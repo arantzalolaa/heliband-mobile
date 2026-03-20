@@ -367,7 +367,7 @@ function loginView() {
   const canSubmit = state.loginUser.trim() && state.loginPass.trim();
   return wrapScreen('bg-gradient-to-b from-[#FFE8B6] via-[#FFF5E1] to-white', `
     <div class="min-h-dvh overflow-y-auto hide-scroll">
-      <div class="min-h-dvh w-full max-w-screen-sm mx-auto flex flex-col items-center justify-start sm:justify-center px-6 sm:px-8 pt-10 sm:pt-12 pb-10">
+      <div class="min-h-dvh w-full max-w-screen-sm mx-auto flex flex-col items-center justify-center px-6 sm:px-8 py-10 sm:py-12">
       <div class="flex flex-col items-center mb-10 sm:mb-12 animate-fade-in">
         <div class="relative mb-6 filter drop-shadow-xl">
           <img src="${logo}" alt="Heli-Band Logo" class="logo-size object-contain" />
